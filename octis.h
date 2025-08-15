@@ -22,6 +22,7 @@ bool turn(int **board, BLOCK *playerBlocks, int blocksAmount);
 int readIntFromUser(const char *prompt, int minimum, int maximum);
 
 void rotate(BLOCK *block);
+void flip(BLOCK *block);
 
 void printBlocks(BLOCK *blocks, int blocksAmount);
 void printBlock(const BLOCK block);

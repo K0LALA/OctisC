@@ -179,18 +179,35 @@ void createEmptyBlock(bool **block, int width, int height)
 void pickBlocks(BLOCK *firstPlayerBlocks, BLOCK *secondPlayerBlocks, const int blockCount)
 {
     // TODO: Apply Rarity
-    // TODO: Randomly rotate and or flip for more diversity
 
     // For each player, pick three random numbers
     // Map each of those numbers to the range [0, BLOCK_COUNT)
     // and assign the corresponding blocks to the players
     for (int i = 0; i < blockCount; i++)
     {
-        int firstPlayerIndex = rand() % BLOCK_COUNT;
-        int secondPlayerIndex = rand() % BLOCK_COUNT;
+        int firstPlayerRand = rand();
+        int firstPlayerIndex = firstPlayerRand % BLOCK_COUNT;
+        bool firstPlayerFlip = firstPlayerRand % 2 == 0;
+        int firstPlayerRotations = firstPlayerRand % 3;
 
-        firstPlayerBlocks[i] = BLOCKS[firstPlayerIndex];
-        secondPlayerBlocks[i] = BLOCKS[secondPlayerIndex];
+        BLOCK firstPlayerBlock = BLOCKS[firstPlayerIndex];
+        if (firstPlayerFlip)
+            flip(&firstPlayerBlock);
+        for (int i = 0; i < firstPlayerRotations; i++)
+            rotate(&firstPlayerBlock);
+        firstPlayerBlocks[i] = firstPlayerBlock;
+        
+        int secondPlayerRand = rand();
+        int secondPlayerIndex = secondPlayerRand % BLOCK_COUNT;
+        bool secondPlayerFlip = secondPlayerRand % 2 == 0;
+        int secondPlayerRotations = secondPlayerRand % 3;
+
+        BLOCK secondPlayerBlock = BLOCKS[secondPlayerIndex];
+        if (secondPlayerFlip)
+            flip(&secondPlayerBlock);
+        for (int i = 0; i < secondPlayerRotations; i++)
+            rotate(&secondPlayerBlock);
+        secondPlayerBlocks[i] = secondPlayerBlock;
     }
 }
 
@@ -263,6 +280,18 @@ void rotate(BLOCK *block)
         for (int x = 0; x < tempBlock.width; x++)
         {
             block->block[x][tempBlock.height - y - 1] = tempBlock.block[y][x];
+        }
+    }
+}
+
+void flip(BLOCK *block)
+{
+    BLOCK tempBlock = *block;
+    for (int y = 0; y < block->height; y++)
+    {
+        for (int x = 0; x < block->width; x++)
+        {
+            block->block[y][block->width - x - 1] = tempBlock.block[y][x];
         }
     }
 }

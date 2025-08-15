@@ -227,12 +227,32 @@ bool turn(int **board, BLOCK *playerBlocks, int blocksAmount)
     BLOCK block = playerBlocks[blockIndex - 1];
 
     // Print the chosen block above the board
-    // Or print the rotation variation which are different only
-    printBlock(block);
-    rotate(&block);
-    printBlock(block);
+    /*int middleX = (WIDTH - block.width) / 2 + 1;
+    printBlockOffset(block, middleX);*/
+    BLOCK *showedBlocks = (BLOCK *) malloc(sizeof(BLOCK));
+    showedBlocks[0] = block;
+    int rotatedBlocks = 1;
+    for (int i = 0; i < 3; i++)
+    {
+        BLOCK *rotatedBlock = (BLOCK *) malloc(sizeof(BLOCK));
+        copyBlock(rotatedBlock, &showedBlocks[rotatedBlocks - 1]);
+        rotate(rotatedBlock);
+        if (compareBlock(rotatedBlock, &block))
+        {
+            if (i == 0)
+            {
+                break;
+            }
+            continue;
+        }
+        rotatedBlocks++;
+        showedBlocks = (BLOCK *) realloc(showedBlocks, sizeof(BLOCK) * rotatedBlocks);
+        showedBlocks[rotatedBlocks - 1] = *rotatedBlock;
+    }
+    printBlocks(showedBlocks, rotatedBlocks);
 
     // Get the chosen orientation from the player
+
 
     // Print the rotated block above the board
 
@@ -275,9 +295,9 @@ void rotate(BLOCK *block)
     BLOCK tempBlock = *block;
     block->width = block->height;
     block->height = tempBlock.width;
-    for (int y = 0; y < tempBlock.height; y++)
+    for (int y = 0; y < MAX_BLOCK_HEIGHT; y++)
     {
-        for (int x = 0; x < tempBlock.width; x++)
+        for (int x = 0; x < MAX_BLOCK_WIDTH; x++)
         {
             block->block[x][tempBlock.height - y - 1] = tempBlock.block[y][x];
         }
@@ -294,6 +314,33 @@ void flip(BLOCK *block)
             block->block[y][block->width - x - 1] = tempBlock.block[y][x];
         }
     }
+}
+
+bool compareBlock(BLOCK *blockA, BLOCK *blockB)
+{
+    for (int y = 0; y < MAX_BLOCK_HEIGHT; y++)
+    {
+        for (int x = 0; x < MAX_BLOCK_WIDTH; x++)
+        {
+            if (blockA->block[y][x] != blockB->block[y][x])
+                return false;
+        }
+    }
+    return true;
+}
+
+void copyBlock(BLOCK *blockA, BLOCK *blockB)
+{
+    for (int y = 0; y < MAX_BLOCK_HEIGHT; y++)
+    {
+        for (int x = 0; x < MAX_BLOCK_WIDTH; x++)
+        {
+            blockA->block[y][x] = blockB->block[y][x];
+        }
+    }
+    blockA->width = blockB->width;
+    blockA->height = blockB->height;
+    //blockA->chance = blockB->chance;
 }
 
 void printBlocks(BLOCK *blocks, int blocksAmount)
@@ -330,8 +377,17 @@ void printBlocks(BLOCK *blocks, int blocksAmount)
 
 void printBlock(const BLOCK block)
 {
+    printBlockOffset(block, 0);
+}
+
+void printBlockOffset(const BLOCK block, int offset)
+{
+    char *spacing = (char *) malloc(sizeof(char) * (offset + 1));
+    spacing = multiplyChar(' ', offset);
     for (int y = 0; y < block.height; y++)
     {
+        if (spacing != NULL)
+            printf("%s", spacing);
         for (int x = 0; x < block.width; x++)
         {
             if (block.block[y][x])
@@ -345,10 +401,15 @@ void printBlock(const BLOCK block)
         }
         printf("\n");
     }
+    free(spacing);
 }
 
 char* multiplyChar(char character, int amount)
 {
+    if (amount == 0)
+    {
+        return NULL;
+    }
     char *multipliedChar = (char *)malloc(sizeof(char) * amount);
     for (int i = 0; i < amount; i++)
     {

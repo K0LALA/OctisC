@@ -23,9 +23,12 @@ int readIntFromUser(const char *prompt, int minimum, int maximum);
 
 void rotate(BLOCK *block);
 void flip(BLOCK *block);
+bool compareBlock(BLOCK *blockA, BLOCK *blockB);
+void copyBlock(BLOCK *blockA, BLOCK *blockB);
 
 void printBlocks(BLOCK *blocks, int blocksAmount);
 void printBlock(const BLOCK block);
+void printBlockOffset(const BLOCK block, int offset);
 char* multiplyChar(char character, int amount);
 void printColored(int color, const char *text);
 void printBoard(int **board, const int width, const int height);

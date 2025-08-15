@@ -137,13 +137,13 @@ void startGame()
     do
     {
         firstPlayerToPlay = !firstPlayerToPlay;
-        printf("Player %d to play!\n", firstPlayerToPlay);
+        printf("Player %d to play!\n", !firstPlayerToPlay + 1);
 
         // Check if block list is empty for both players
 
     } while (turn(board, firstPlayerToPlay ? firstPlayerBlocks : secondPlayerBlocks, firstPlayerToPlay ? firstPlayerBlocksAmount : secondPlayerBlocksAmount));
 
-    printf("\nPlayer %d lost!\n", firstPlayerToPlay);
+    printf("\nPlayer %d lost!\n", !firstPlayerToPlay + 1);
     
     free(firstPlayerBlocks);
     free(secondPlayerBlocks);
@@ -188,7 +188,7 @@ void pickBlocks(BLOCK *firstPlayerBlocks, BLOCK *secondPlayerBlocks, const int b
     {
         int firstPlayerIndex = rand() % BLOCK_COUNT;
         int secondPlayerIndex = rand() % BLOCK_COUNT;
-        printf("%d:%d\n", firstPlayerIndex, secondPlayerIndex);
+
         firstPlayerBlocks[i] = BLOCKS[firstPlayerIndex];
         secondPlayerBlocks[i] = BLOCKS[secondPlayerIndex];
     }
@@ -212,7 +212,7 @@ bool turn(int **board, BLOCK *playerBlocks, int blocksAmount)
     // Print the chosen block above the board
     // Or print the rotation variation which are different only
     printBlock(block);
-    rotate(&block, 1);
+    rotate(&block);
     printBlock(block);
 
     // Get the chosen orientation from the player
@@ -253,34 +253,30 @@ int readIntFromUser(const char *prompt, int minimum, int maximum)
     return readedValue;
 }
 
-void rotate(BLOCK *block, int rotationCount)
+void rotate(BLOCK *block)
 {
     BLOCK tempBlock = *block;
     block->width = block->height;
     block->height = tempBlock.width;
-    for (int i = 0; i < rotationCount % 4; i++)
+    for (int y = 0; y < tempBlock.height; y++)
     {
-        for (int y = 0; y < tempBlock.height; y++)
+        for (int x = 0; x < tempBlock.width; x++)
         {
-            for (int x = 0; x < tempBlock.width; x++)
-            {
-                block->block[x][tempBlock.height - y - 1] = tempBlock.block[y][x];
-                printf("%d:%d %d\n", x, tempBlock.height - y - 1, block->block[x][tempBlock.height - y - 1]);
-            }
+            block->block[x][tempBlock.height - y - 1] = tempBlock.block[y][x];
         }
     }
 }
 
 void printBlocks(BLOCK *blocks, int blocksAmount)
 {
-    char spacing[11] = "          ";
-    for (int y = 0; y < 5 /* Max height between all the blocks */; y++)
+    char spacing[6] = "     ";
+    for (int y = 0; y < MAX_BLOCK_HEIGHT; y++)
     {
         for (int i = 0; i < blocksAmount; i++)
         {
-            if (i >= blocks[i].height)
+            if (y >= blocks[i].height)
             {
-                printf("%s%s", multiplyChar(' ', 2 * blocks[i].width), spacing);
+                printf("%s%s", multiplyChar(' ', 2 * blocks[i].width + 1), spacing);
                 continue;
             }
             for (int x = 0; x < blocks[i].width; x++)

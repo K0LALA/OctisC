@@ -14,14 +14,15 @@ typedef struct {
     int height;
     int count;
     float chance;
+    bool available;
 } BLOCK;
 
 void startGame();
 
 void createBoard(int **board, const int width, const int height, const int baseValue);
 void createEmptyBlock(bool **block, int width, int height);
-void pickBlocks(BLOCK *firstPlayerBlocks, BLOCK *secondPlayerBlocks, const int blockCount);
-bool turn(int **board, BLOCK *playerBlocks, int blocksAmount);
+void pickBlocks(BLOCK *blocks, const int blockCount);
+bool turn(int **board, BLOCK *playerBlocks, int *blocksAmount);
 
 int readIntFromUser(const char *prompt, int minimum, int maximum);
 

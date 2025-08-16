@@ -16,7 +16,8 @@ const BLOCK BLOCKS[] = {
      1,
      1,
      1,
-     RARE},
+     RARE,
+     true},
 
     {{{1, 1, 0},
       {0, 1, 1},
@@ -24,20 +25,23 @@ const BLOCK BLOCKS[] = {
      3,
      3,
      5,
-     COMMON},
+     COMMON,
+     true},
 
     {{{1, 1, 1, 1}},
      4,
      1,
      4,
-     COMMON},
+     COMMON,
+     true},
 
     {{{1, 0, 0},
       {1, 1, 1}},
      3,
      2,
      4,
-     COMMON},
+     COMMON,
+     true},
 
     {{{0, 1},
       {0, 1},
@@ -46,7 +50,8 @@ const BLOCK BLOCKS[] = {
      2,
      4,
      5,
-     COMMON},
+     COMMON,
+     true},
 
     {{{1, 1, 1},
       {1, 0, 1},
@@ -54,14 +59,16 @@ const BLOCK BLOCKS[] = {
      3,
      3,
      8,
-     RARE},
+     RARE,
+     true},
 
     {{{0, 1, 1},
       {1, 1, 0}},
      3,
      2,
      4,
-     COMMON},
+     COMMON,
+     true},
 
     {{{1, 0},
       {1, 1},
@@ -69,14 +76,16 @@ const BLOCK BLOCKS[] = {
      2,
      3,
      4,
-     COMMON},
+     COMMON,
+     true},
 
     {{{1, 0, 1},
       {1, 1, 1}},
      3,
      2,
      5,
-     COMMON},
+     COMMON,
+     true},
 
     {{{0, 0, 1},
       {0, 1, 1},
@@ -84,7 +93,8 @@ const BLOCK BLOCKS[] = {
      3,
      3,
      5,
-     COMMON},
+     COMMON,
+     true},
 
     {{{0, 1, 0},
       {1, 1, 1},
@@ -92,14 +102,16 @@ const BLOCK BLOCKS[] = {
      3,
      3,
      5,
-     COMMON},
+     COMMON,
+     true},
 
     {{{1, 1, 0},
       {0, 1, 1}},
      3,
      2,
      4,
-     COMMON},
+     COMMON,
+     true},
 
     {{{0, 1, 1},
       {0, 1, 0},
@@ -109,7 +121,9 @@ const BLOCK BLOCKS[] = {
      3,
      5,
      8,
-     RARE}};
+     RARE,
+     true}
+};
 
 const int WIDTH = 8;
 const int HEIGHT = 15;
@@ -124,11 +138,6 @@ int main(int argc, char **argv)
     printf("This game is a 2-player Tetris game.\n");
     printf("In order to win, the oponent has to place a block over the limit.\n");
 
-    // printf("\033[%dm%s\033[0m\n", 32, "Press Enter to start the game");
-    /*char *scanTest = (char *) malloc(sizeof(char) * 10);
-    scanf("%s", scanTest);
-    printf("%s\n", scanTest);*/
-
     srand(time(NULL));
     startGame();
 
@@ -140,9 +149,10 @@ void startGame()
     bool firstPlayerToPlay = false;
     BLOCK *firstPlayerBlocks = (BLOCK *)malloc(sizeof(BLOCK) * MAX_BLOCK_COUNT);
     int firstPlayerBlocksAmount = MAX_BLOCK_COUNT;
+    pickBlocks(firstPlayerBlocks, MAX_BLOCK_COUNT);
     BLOCK *secondPlayerBlocks = (BLOCK *)malloc(sizeof(BLOCK) * MAX_BLOCK_COUNT);
     int secondPlayerBlocksAmount = MAX_BLOCK_COUNT;
-    pickBlocks(firstPlayerBlocks, secondPlayerBlocks, MAX_BLOCK_COUNT);
+    pickBlocks(secondPlayerBlocks, MAX_BLOCK_COUNT);
     int **board = (int **)malloc(WIDTH * HEIGHT * sizeof(int));
     // ASCII Table: 32 for spaces, 35 for #
     createBoard(board, WIDTH, HEIGHT, OFF_VALUE);
@@ -153,8 +163,17 @@ void startGame()
         printf("Player %d to play!\n", !firstPlayerToPlay + 1);
 
         // Check if block list is empty for both players
-
-    } while (turn(board, firstPlayerToPlay ? firstPlayerBlocks : secondPlayerBlocks, firstPlayerToPlay ? firstPlayerBlocksAmount : secondPlayerBlocksAmount));
+        if (firstPlayerBlocksAmount <= 0)
+        {
+            pickBlocks(firstPlayerBlocks, MAX_BLOCK_COUNT);
+            firstPlayerBlocksAmount = MAX_BLOCK_COUNT;
+        }
+        if (secondPlayerBlocksAmount <= 0)
+        {
+            pickBlocks(secondPlayerBlocks, MAX_BLOCK_COUNT);
+            secondPlayerBlocksAmount = MAX_BLOCK_COUNT;
+        }
+    } while (turn(board, firstPlayerToPlay ? firstPlayerBlocks : secondPlayerBlocks, firstPlayerToPlay ? &firstPlayerBlocksAmount : &secondPlayerBlocksAmount));
 
     printf("\nPlayer %d lost!\n", !firstPlayerToPlay + 1);
 
@@ -189,38 +208,22 @@ void createEmptyBlock(bool **block, int width, int height)
     }
 }
 
-void pickBlocks(BLOCK *firstPlayerBlocks, BLOCK *secondPlayerBlocks, const int blockCount)
+void pickBlocks(BLOCK *blocks, const int blockCount)
 {
     // TODO: Apply Rarity
-
-    // For each player, pick three random numbers
-    // Map each of those numbers to the range [0, BLOCK_COUNT)
-    // and assign the corresponding blocks to the players
     for (int i = 0; i < blockCount; i++)
     {
-        int firstPlayerRand = rand();
-        int firstPlayerIndex = firstPlayerRand % BLOCK_COUNT;
-        bool firstPlayerFlip = firstPlayerRand % 2 == 0;
-        int firstPlayerRotations = firstPlayerRand % 3;
+        int randomValue = rand();
+        int blockIndex = randomValue % BLOCK_COUNT;
+        bool doFlip = randomValue % 2 == 0;
+        int rotationCount = randomValue % 3;
 
-        BLOCK firstPlayerBlock = BLOCKS[firstPlayerIndex];
-        if (firstPlayerFlip)
-            flip(&firstPlayerBlock);
-        for (int i = 0; i < firstPlayerRotations; i++)
-            rotate(&firstPlayerBlock);
-        firstPlayerBlocks[i] = firstPlayerBlock;
-
-        int secondPlayerRand = rand();
-        int secondPlayerIndex = secondPlayerRand % BLOCK_COUNT;
-        bool secondPlayerFlip = secondPlayerRand % 2 == 0;
-        int secondPlayerRotations = secondPlayerRand % 3;
-
-        BLOCK secondPlayerBlock = BLOCKS[secondPlayerIndex];
-        if (secondPlayerFlip)
-            flip(&secondPlayerBlock);
-        for (int i = 0; i < secondPlayerRotations; i++)
-            rotate(&secondPlayerBlock);
-        secondPlayerBlocks[i] = secondPlayerBlock;
+        BLOCK block = BLOCKS[blockIndex];
+        if (doFlip)
+            flip(&block);
+        for (int i = 0; i < rotationCount; i++)
+            rotate(&block);
+        blocks[i] = block;
     }
 }
 
@@ -228,16 +231,28 @@ void pickBlocks(BLOCK *firstPlayerBlocks, BLOCK *secondPlayerBlocks, const int b
 /// @param board The current board
 /// @param playerBlocks The player's blocks
 /// @return 0 if the player lost, true if the game can continue
-bool turn(int **board, BLOCK *playerBlocks, int blocksAmount)
+bool turn(int **board, BLOCK *playerBlocks, int *blocksAmount)
 {
     // Print the available blocks
-    printBlocks(playerBlocks, 3);
+    printBlocks(playerBlocks, MAX_BLOCK_COUNT);
 
     // Get the chosen block from the player
-    char *prompt = (char *)malloc(sizeof(char) * (25 + (int)(blocksAmount / 10)));
-    sprintf(prompt, "Choose your block [1-%d]: ", blocksAmount);
-    int blockIndex = readIntFromUser(prompt, 1, blocksAmount);
-    BLOCK block = playerBlocks[blockIndex - 1];
+    char *prompt = (char *)malloc(sizeof(char) * (25 + (int)(*blocksAmount / 10)));
+    sprintf(prompt, "Choose your block [1-%d]: ", *blocksAmount);
+    int blockIndex = readIntFromUser(prompt, 1, *blocksAmount);
+    BLOCK block;
+    int attempt = 0;
+    do
+    {
+        block = playerBlocks[blockIndex - 1 + attempt];
+        attempt++;
+    } while(!block.available && attempt < MAX_BLOCK_COUNT);
+
+    if (attempt > MAX_BLOCK_COUNT)
+    {
+        puts("Couldn't get choosen block from the player");
+        exit(EXIT_FAILURE);
+    }
 
     // Print the chosen block above the board
     BLOCK *showedBlocks = (BLOCK *)malloc(sizeof(BLOCK));
@@ -261,11 +276,11 @@ bool turn(int **board, BLOCK *playerBlocks, int blocksAmount)
         showedBlocks[rotatedBlocks - 1] = *rotatedBlock;
         free(rotatedBlock);
     }
-    printBlocks(showedBlocks, rotatedBlocks);
-
+    
     // Get the chosen orientation from the player
     if (rotatedBlocks > 1)
     {
+        printBlocks(showedBlocks, rotatedBlocks);
         prompt = (char *)realloc(prompt, sizeof(char) * 36);
         sprintf(prompt, "Choose your orientation [1-%d]: ", rotatedBlocks);
         int chosenRotation = readIntFromUser(prompt, 1, rotatedBlocks);
@@ -298,6 +313,8 @@ bool turn(int **board, BLOCK *playerBlocks, int blocksAmount)
     printBoard(board);
 
     // Remove the block from the list
+    (*blocksAmount)--;
+    playerBlocks[blockIndex - 1 + attempt].available = false;
 
     return true;
 }
@@ -374,6 +391,8 @@ void copyBlock(BLOCK *blockA, BLOCK *blockB)
     blockA->width = blockB->width;
     blockA->height = blockB->height;
     blockA->count = blockB->count;
+    blockA->available = blockB->available;
+    // Not really necessary since it's not used after block choosing
     // blockA->chance = blockB->chance;
 }
 
@@ -410,7 +429,6 @@ void addBlock(int **board, BLOCK *block, int X, int Y, int onValue)
         {
             if (block->block[y][x])
             {
-                // Changing one pixel changes the whole column
                 board[Y + y][X + x] = onValue;
             }
         }
@@ -459,7 +477,6 @@ void removeCompletedLines(int **board)
     {
         if (isLineFinished(board[y], ON_VALUE))
         {
-            // Remove this line, make everything go down by 1
             for (int i = y; i > 0; i--)
             {
                 board[i] = board[i - 1];
@@ -481,9 +498,13 @@ void printBlocks(BLOCK *blocks, int blocksAmount)
     {
         for (int i = 0; i < blocksAmount; i++)
         {
+            if (!blocks[i].available)
+            {
+                continue;
+            }
             if (y >= blocks[i].height)
             {
-                printf("%s%s", multiplyChar(' ', 2 * blocks[i].width + 1), spacing);
+                printf("%s", multiplyChar(' ', 2 * blocks[i].width + 6));
                 continue;
             }
             for (int x = 0; x < blocks[i].width; x++)

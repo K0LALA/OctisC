@@ -32,6 +32,8 @@ void copyBlock(BLOCK *blockA, BLOCK *blockB);
 void copyBoard(int **boardA, int **boardB);
 void addBlock(int **board, BLOCK *block, int X, int Y, int onValue);
 bool fall(int **board, BLOCK *block, int X);
+bool isLineFinished(int *line, int onValue);
+void removeCompletedLines(int **board);
 
 void printBlocks(BLOCK *blocks, int blocksAmount);
 void printBlock(const BLOCK block);

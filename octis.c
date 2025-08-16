@@ -286,10 +286,14 @@ bool turn(int **board, BLOCK *playerBlocks, int blocksAmount)
     free(prompt);
 
     // Place the block in the board
-    bool result = fall(board, &block, chosenX - 1);
-
+    if (!fall(board, &block, chosenX - 1))
+    {
+        return false;
+    }
+    
     // Remove completed lines
-
+    removeCompletedLines(board);
+    
     // Print the board
     printBoard(board);
 
@@ -435,6 +439,39 @@ bool fall(int **board, BLOCK *block, int X)
     }
     addBlock(board, block, X, height - 1, ON_VALUE);
     return true;
+}
+
+bool isLineFinished(int *line, int onValue)
+{
+    for (int x = 0; x < WIDTH; x++)
+    {
+        if (line[x] != onValue)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void removeCompletedLines(int **board)
+{
+    for (int y = 0; y < HEIGHT; y++)
+    {
+        if (isLineFinished(board[y], ON_VALUE))
+        {
+            // Remove this line, make everything go down by 1
+            for (int i = y; i > 0; i--)
+            {
+                board[i] = board[i - 1];
+            }
+            int *line = (int *)malloc(sizeof(int) * WIDTH);
+            for (int x = 0; x < WIDTH; x++)
+            {
+                line[x] = OFF_VALUE;
+            }
+            board[0] = line;
+        }
+    }
 }
 
 void printBlocks(BLOCK *blocks, int blocksAmount)

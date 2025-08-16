@@ -15,6 +15,7 @@ const BLOCK BLOCKS[] = {
     {{{1}},
      1,
      1,
+     1,
      RARE},
 
     {{{1, 1, 0},
@@ -22,17 +23,20 @@ const BLOCK BLOCKS[] = {
       {0, 1, 0}},
      3,
      3,
+     5,
      COMMON},
 
     {{{1, 1, 1, 1}},
      4,
      1,
+     4,
      COMMON},
 
     {{{1, 0, 0},
       {1, 1, 1}},
      3,
      2,
+     4,
      COMMON},
 
     {{{0, 1},
@@ -41,6 +45,7 @@ const BLOCK BLOCKS[] = {
       {1, 0}},
      2,
      4,
+     5,
      COMMON},
 
     {{{1, 1, 1},
@@ -48,12 +53,14 @@ const BLOCK BLOCKS[] = {
       {1, 1, 1}},
      3,
      3,
+     8,
      RARE},
 
     {{{0, 1, 1},
       {1, 1, 0}},
      3,
      2,
+     4,
      COMMON},
 
     {{{1, 0},
@@ -61,12 +68,14 @@ const BLOCK BLOCKS[] = {
       {1, 0}},
      2,
      3,
+     4,
      COMMON},
 
     {{{1, 0, 1},
       {1, 1, 1}},
      3,
      2,
+     5,
      COMMON},
 
     {{{0, 0, 1},
@@ -74,6 +83,7 @@ const BLOCK BLOCKS[] = {
       {1, 1, 0}},
      3,
      3,
+     5,
      COMMON},
 
     {{{0, 1, 0},
@@ -81,12 +91,14 @@ const BLOCK BLOCKS[] = {
       {0, 1, 0}},
      3,
      3,
+     5,
      COMMON},
 
     {{{1, 1, 0},
       {0, 1, 1}},
      3,
      2,
+     4,
      COMMON},
 
     {{{0, 1, 1},
@@ -96,6 +108,7 @@ const BLOCK BLOCKS[] = {
       {1, 0, 0}},
      3,
      5,
+     8,
      RARE}};
 
 const int WIDTH = 8;
@@ -110,12 +123,12 @@ int main(int argc, char **argv)
     printf("|_____|___|_| |_|___|\n");
     printf("This game is a 2-player Tetris game.\n");
     printf("In order to win, the oponent has to place a block over the limit.\n");
-    
-    //printf("\033[%dm%s\033[0m\n", 32, "Press Enter to start the game");
+
+    // printf("\033[%dm%s\033[0m\n", 32, "Press Enter to start the game");
     /*char *scanTest = (char *) malloc(sizeof(char) * 10);
     scanf("%s", scanTest);
     printf("%s\n", scanTest);*/
-    
+
     srand(time(NULL));
     startGame();
 
@@ -132,7 +145,7 @@ void startGame()
     pickBlocks(firstPlayerBlocks, secondPlayerBlocks, MAX_BLOCK_COUNT);
     int **board = (int **)malloc(WIDTH * HEIGHT * sizeof(int));
     // ASCII Table: 32 for spaces, 35 for #
-    createBoard(board, WIDTH, HEIGHT, (int)' ');
+    createBoard(board, WIDTH, HEIGHT, OFF_VALUE);
 
     do
     {
@@ -144,21 +157,21 @@ void startGame()
     } while (turn(board, firstPlayerToPlay ? firstPlayerBlocks : secondPlayerBlocks, firstPlayerToPlay ? firstPlayerBlocksAmount : secondPlayerBlocksAmount));
 
     printf("\nPlayer %d lost!\n", !firstPlayerToPlay + 1);
-    
+
     free(firstPlayerBlocks);
     free(secondPlayerBlocks);
     free(board);
 }
 
-void createBoard(int **board, const int width, const int height, const int baseValue)
+void createBoard(int **board, int width, int height, int baseValue)
 {
-    int *line = (int *)malloc(sizeof(int) * width);
-    for (int x = 0; x < width; x++)
-    {
-        line[x] = baseValue;
-    }
     for (int y = 0; y < height; y++)
     {
+        int *line = (int *)malloc(sizeof(int) * width);
+        for (int x = 0; x < width; x++)
+        {
+            line[x] = baseValue;
+        }
         board[y] = line;
     }
 }
@@ -196,7 +209,7 @@ void pickBlocks(BLOCK *firstPlayerBlocks, BLOCK *secondPlayerBlocks, const int b
         for (int i = 0; i < firstPlayerRotations; i++)
             rotate(&firstPlayerBlock);
         firstPlayerBlocks[i] = firstPlayerBlock;
-        
+
         int secondPlayerRand = rand();
         int secondPlayerIndex = secondPlayerRand % BLOCK_COUNT;
         bool secondPlayerFlip = secondPlayerRand % 2 == 0;
@@ -221,20 +234,18 @@ bool turn(int **board, BLOCK *playerBlocks, int blocksAmount)
     printBlocks(playerBlocks, 3);
 
     // Get the chosen block from the player
-    char *prompt = (char *) malloc(sizeof(char) * (25 + (int)(blocksAmount / 10)));
+    char *prompt = (char *)malloc(sizeof(char) * (25 + (int)(blocksAmount / 10)));
     sprintf(prompt, "Choose your block [1-%d]: ", blocksAmount);
     int blockIndex = readIntFromUser(prompt, 1, blocksAmount);
     BLOCK block = playerBlocks[blockIndex - 1];
 
     // Print the chosen block above the board
-    /*int middleX = (WIDTH - block.width) / 2 + 1;
-    printBlockOffset(block, middleX);*/
-    BLOCK *showedBlocks = (BLOCK *) malloc(sizeof(BLOCK));
+    BLOCK *showedBlocks = (BLOCK *)malloc(sizeof(BLOCK));
     showedBlocks[0] = block;
     int rotatedBlocks = 1;
     for (int i = 0; i < 3; i++)
     {
-        BLOCK *rotatedBlock = (BLOCK *) malloc(sizeof(BLOCK));
+        BLOCK *rotatedBlock = (BLOCK *)malloc(sizeof(BLOCK));
         copyBlock(rotatedBlock, &showedBlocks[rotatedBlocks - 1]);
         rotate(rotatedBlock);
         if (compareBlock(rotatedBlock, &block))
@@ -246,23 +257,41 @@ bool turn(int **board, BLOCK *playerBlocks, int blocksAmount)
             continue;
         }
         rotatedBlocks++;
-        showedBlocks = (BLOCK *) realloc(showedBlocks, sizeof(BLOCK) * rotatedBlocks);
+        showedBlocks = (BLOCK *)realloc(showedBlocks, sizeof(BLOCK) * rotatedBlocks);
         showedBlocks[rotatedBlocks - 1] = *rotatedBlock;
+        free(rotatedBlock);
     }
     printBlocks(showedBlocks, rotatedBlocks);
 
     // Get the chosen orientation from the player
-
+    if (rotatedBlocks > 1)
+    {
+        prompt = (char *)realloc(prompt, sizeof(char) * 32);
+        sprintf(prompt, "Choose your orientation [1-%d]: ", rotatedBlocks);
+        int chosenRotation = readIntFromUser(prompt, 1, rotatedBlocks);
+        block = showedBlocks[chosenRotation - 1];
+    }
+    free(showedBlocks);
 
     // Print the rotated block above the board
+    int middleX = WIDTH - block.width;
+    printBlockOffset(block, middleX);
+    printBoard(board);
 
     // Get the chosen abscissa
+    int maxX = WIDTH - block.width + 1;
+    prompt = (char *)realloc(prompt, sizeof(char) * (29 + (int)(maxX / 10)));
+    sprintf(prompt, "Choose your abscissa [1-%d]: ", maxX);
+    int chosenX = readIntFromUser(prompt, 1, maxX);
+    free(prompt);
 
     // Place the block in the board
+    bool result = fall(board, &block, chosenX - 1);
 
     // Remove completed lines
 
     // Print the board
+    printBoard(board);
 
     // Remove the block from the list
 
@@ -340,7 +369,72 @@ void copyBlock(BLOCK *blockA, BLOCK *blockB)
     }
     blockA->width = blockB->width;
     blockA->height = blockB->height;
-    //blockA->chance = blockB->chance;
+    blockA->count = blockB->count;
+    // blockA->chance = blockB->chance;
+}
+
+void copyBoard(int **boardA, int **boardB)
+{
+    for (int y = 0; y < HEIGHT; y++)
+    {
+        for (int x = 0; x < WIDTH; x++)
+        {
+            boardA[y][x] = boardB[y][x];
+        }
+    }
+}
+
+int countBoardSquares(int **board, int onValue)
+{
+    int count = 0;
+    for (int y = 0; y < HEIGHT; y++)
+    {
+        for (int x = 0; x < WIDTH; x++)
+        {
+            if (board[y][x] == onValue)
+                count++;
+        }
+    }
+    return count;
+}
+
+void addBlock(int **board, BLOCK *block, int X, int Y, int onValue)
+{
+    for (int y = 0; y < block->height; y++)
+    {
+        for (int x = 0; x < block->width; x++)
+        {
+            if (block->block[y][x])
+            {
+                // Changing one pixel changes the whole column
+                board[Y + y][X + x] = onValue;
+            }
+        }
+    }
+}
+
+bool fall(int **board, BLOCK *block, int X)
+{
+    int totalSquares = block->count + countBoardSquares(board, ON_VALUE);
+    int height = 0;
+    while (height + block->height <= HEIGHT)
+    {
+        int **boardCopy = (int **)malloc(WIDTH * HEIGHT * sizeof(int));
+        createBoard(boardCopy, WIDTH, HEIGHT, OFF_VALUE);
+        copyBoard(boardCopy, board);
+        addBlock(boardCopy, block, X, height, ON_VALUE);
+        if (totalSquares != countBoardSquares(boardCopy, ON_VALUE))
+        {
+            if (height - 1 < 0)
+            {
+                return false;
+            }
+            break;
+        }
+        height++;
+    }
+    addBlock(board, block, X, height - 1, ON_VALUE);
+    return true;
 }
 
 void printBlocks(BLOCK *blocks, int blocksAmount)
@@ -382,7 +476,7 @@ void printBlock(const BLOCK block)
 
 void printBlockOffset(const BLOCK block, int offset)
 {
-    char *spacing = (char *) malloc(sizeof(char) * (offset + 1));
+    char *spacing = (char *)malloc(sizeof(char) * (offset + 1));
     spacing = multiplyChar(' ', offset);
     for (int y = 0; y < block.height; y++)
     {
@@ -404,7 +498,7 @@ void printBlockOffset(const BLOCK block, int offset)
     free(spacing);
 }
 
-char* multiplyChar(char character, int amount)
+char *multiplyChar(char character, int amount)
 {
     if (amount == 0)
     {
@@ -423,18 +517,18 @@ void printColored(int color, const char *text)
     printf("\033[%dm%s\033[0m", color, text);
 }
 
-void printBoard(int **board, const int width, const int height)
+void printBoard(int **board)
 {
-    for (int y = 0; y < height; y++)
+    for (int y = 0; y < HEIGHT; y++)
     {
-        for (int x = 0; x < width; x++)
+        for (int x = 0; x < WIDTH; x++)
         {
             printf("%c ", (char)board[y][x]);
         }
-        printf("%d\n", height - y);
+        printf("%d\n", HEIGHT - y);
     }
 
-    for (int x = 1; x <= width; x++)
+    for (int x = 1; x <= WIDTH; x++)
     {
         printf("%d ", x);
     }

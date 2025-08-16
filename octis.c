@@ -242,7 +242,7 @@ bool turn(int **board, BLOCK *playerBlocks, int blocksAmount)
     // Print the chosen block above the board
     BLOCK *showedBlocks = (BLOCK *)malloc(sizeof(BLOCK));
     showedBlocks[0] = block;
-    int rotatedBlocks = 1;
+    unsigned short rotatedBlocks = 1;
     for (int i = 0; i < 3; i++)
     {
         BLOCK *rotatedBlock = (BLOCK *)malloc(sizeof(BLOCK));
@@ -266,7 +266,7 @@ bool turn(int **board, BLOCK *playerBlocks, int blocksAmount)
     // Get the chosen orientation from the player
     if (rotatedBlocks > 1)
     {
-        prompt = (char *)realloc(prompt, sizeof(char) * 32);
+        prompt = (char *)realloc(prompt, sizeof(char) * 36);
         sprintf(prompt, "Choose your orientation [1-%d]: ", rotatedBlocks);
         int chosenRotation = readIntFromUser(prompt, 1, rotatedBlocks);
         block = showedBlocks[chosenRotation - 1];

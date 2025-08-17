@@ -16,8 +16,7 @@ const BLOCK BLOCKS[] = {
      1,
      1,
      1,
-     RARE,
-     true},
+     RARE},
 
     {{{1, 1, 0},
       {0, 1, 1},
@@ -25,23 +24,20 @@ const BLOCK BLOCKS[] = {
      3,
      3,
      5,
-     COMMON,
-     true},
+     COMMON},
 
     {{{1, 1, 1, 1}},
      4,
      1,
      4,
-     COMMON,
-     true},
+     COMMON},
 
     {{{1, 0, 0},
       {1, 1, 1}},
      3,
      2,
      4,
-     COMMON,
-     true},
+     COMMON},
 
     {{{0, 1},
       {0, 1},
@@ -50,8 +46,7 @@ const BLOCK BLOCKS[] = {
      2,
      4,
      5,
-     COMMON,
-     true},
+     COMMON},
 
     {{{1, 1, 1},
       {1, 0, 1},
@@ -59,16 +54,14 @@ const BLOCK BLOCKS[] = {
      3,
      3,
      8,
-     RARE,
-     true},
+     RARE},
 
     {{{0, 1, 1},
       {1, 1, 0}},
      3,
      2,
      4,
-     COMMON,
-     true},
+     COMMON},
 
     {{{1, 0},
       {1, 1},
@@ -76,16 +69,14 @@ const BLOCK BLOCKS[] = {
      2,
      3,
      4,
-     COMMON,
-     true},
+     COMMON},
 
     {{{1, 0, 1},
       {1, 1, 1}},
      3,
      2,
      5,
-     COMMON,
-     true},
+     COMMON},
 
     {{{0, 0, 1},
       {0, 1, 1},
@@ -93,8 +84,7 @@ const BLOCK BLOCKS[] = {
      3,
      3,
      5,
-     COMMON,
-     true},
+     COMMON},
 
     {{{0, 1, 0},
       {1, 1, 1},
@@ -102,16 +92,14 @@ const BLOCK BLOCKS[] = {
      3,
      3,
      5,
-     COMMON,
-     true},
+     COMMON},
 
     {{{1, 1, 0},
       {0, 1, 1}},
      3,
      2,
      4,
-     COMMON,
-     true},
+     COMMON},
 
     {{{0, 1, 1},
       {0, 1, 0},
@@ -121,8 +109,7 @@ const BLOCK BLOCKS[] = {
      3,
      5,
      8,
-     RARE,
-     true}};
+     RARE}};
 
 const int WIDTH = 8;
 const int HEIGHT = 15;
@@ -173,7 +160,12 @@ void startGame()
             pickBlocks(secondPlayerBlocks, MAX_BLOCK_COUNT);
             secondPlayerBlocksAmount = MAX_BLOCK_COUNT;
         }
-    } while (turn(board, firstPlayerToPlay ? firstPlayerBlocks : secondPlayerBlocks, firstPlayerToPlay ? &firstPlayerBlocksAmount : &secondPlayerBlocksAmount));
+
+        if (firstPlayerToPlay)
+            firstPlayerBlocks = turn(board, firstPlayerBlocks, &firstPlayerBlocksAmount);
+        else
+            secondPlayerBlocks = turn(board, secondPlayerBlocks, &secondPlayerBlocksAmount);
+    } while (firstPlayerBlocks != NULL && secondPlayerBlocks != NULL);
 
     printf("\nPlayer %d lost!\n", !firstPlayerToPlay + 1);
 
@@ -216,37 +208,17 @@ void pickBlocks(BLOCK *blocks, const int blockCount)
 /// @brief Gets the input from the player to get his moves
 /// @param board The current board
 /// @param playerBlocks The player's blocks
-/// @return 0 if the player lost, true if the game can continue
-bool turn(int *board, BLOCK *playerBlocks, int *blocksAmount)
+/// @return NULL if the player lost, a list of the still available blocks otherwise
+BLOCK *turn(int *board, BLOCK *playerBlocks, int *blocksAmount)
 {
     // Print the available blocks
-    printBlocks(playerBlocks, MAX_BLOCK_COUNT);
+    printBlocks(playerBlocks, *blocksAmount);
 
     // Get the chosen block from the player
     char *prompt = (char *)malloc(sizeof(char) * (26 + (int)(*blocksAmount / 10)));
     sprintf(prompt, "Choose your block [1-%d]: ", *blocksAmount);
     int blockIndex = readIntFromUser(prompt, 1, *blocksAmount);
-    BLOCK block;
-    int attempt = 0;
-    do
-    {
-        block = playerBlocks[blockIndex - 1 + attempt];
-        if (block.available)
-        {
-            break;
-        }
-        else
-        {
-            attempt++;
-        }
-    } while (attempt < MAX_BLOCK_COUNT);
-
-    if (attempt >= MAX_BLOCK_COUNT)
-    {
-        puts("Couldn't get choosen block from the player");
-        free(prompt);
-        return false;
-    }
+    BLOCK block = playerBlocks[blockIndex - 1];
 
     // Print the chosen block above the board
     BLOCK *showedBlocks = (BLOCK *)malloc(sizeof(BLOCK));
@@ -297,7 +269,7 @@ bool turn(int *board, BLOCK *playerBlocks, int *blocksAmount)
     // Place the block in the board
     if (!fall(board, &block, chosenX - 1))
     {
-        return false;
+        return NULL;
     }
 
     // Remove completed lines
@@ -308,9 +280,19 @@ bool turn(int *board, BLOCK *playerBlocks, int *blocksAmount)
 
     // Remove the block from the list
     (*blocksAmount)--;
-    playerBlocks[blockIndex - 1 + attempt].available = false;
+    BLOCK *newBlocks = (BLOCK *)malloc(sizeof(BLOCK) * (*blocksAmount));
+    int count = 0;
+    for (int i = 0; i < (*blocksAmount) + 1; i++)
+    {
+        if (i != blockIndex - 1)
+        {
+            newBlocks[count++] = playerBlocks[i];
+        }
+    }
 
-    return true;
+    free(playerBlocks);
+
+    return newBlocks;
 }
 
 int readIntFromUser(const char *prompt, int minimum, int maximum)
@@ -385,7 +367,6 @@ void copyBlock(BLOCK *blockA, BLOCK *blockB)
     blockA->width = blockB->width;
     blockA->height = blockB->height;
     blockA->count = blockB->count;
-    blockA->available = blockB->available;
     // Not really necessary since it's not used after block choosing
     // blockA->chance = blockB->chance;
 }
@@ -488,19 +469,21 @@ void removeCompletedLines(int *board)
             for (int i = y; i > 0; i--)
             {
                 // board[i] = board[i - 1];
-                int *ptrAbove = ptr - WIDTH;
+                int *ptrAbove = ptrCopy - WIDTH;
                 for (int x = 0; x < WIDTH; x++)
                 {
                     *ptrCopy = *ptrAbove;
-                    ptrCopy--;
-                    ptrAbove--;
+                    ptrCopy++;
+                    ptrAbove++;
                 }
+                ptrCopy -= WIDTH * 2 - 1;
             }
             for (int x = 0; x < WIDTH; x++)
             {
                 *start = OFF_VALUE;
                 start++;
             }
+            start = board;
         }
         ptr += WIDTH;
     }
@@ -509,31 +492,25 @@ void removeCompletedLines(int *board)
 void printBlocks(BLOCK *blocks, int blocksAmount)
 {
     char spacing[6] = "     ";
+    int count = 0;
     for (int y = 0; y < MAX_BLOCK_HEIGHT; y++)
     {
         for (int i = 0; i < blocksAmount; i++)
         {
-            if (!blocks[i].available)
-            {
-                continue;
-            }
-            if (y >= blocks[i].height)
-            {
-                char *space = (char *)malloc(sizeof(char) * (2 * blocks[i].width + 7));
-                space = multiplyChar(' ', 2 * blocks[i].width + 6);
-                printf("%s", space);
-                free(space);
-                continue;
-            }
             for (int x = 0; x < blocks[i].width; x++)
             {
-                if (blocks[i].block[y][x])
+                if (y < blocks[i].height && blocks[i].block[y][x])
                 {
                     printf("# ");
                 }
                 else
                 {
                     printf("  ");
+                    count++;
+                    if (count >= 100)
+                    {
+                        printf("wtf %d\n", i);
+                    }
                 }
             }
             if (i != blocksAmount - 1)

@@ -134,13 +134,30 @@ void startGame()
 {
     bool firstPlayerToPlay = false;
     BLOCK *firstPlayerBlocks = (BLOCK *)malloc(sizeof(BLOCK) * MAX_BLOCK_COUNT);
+    if (firstPlayerBlocks == NULL)
+    {
+        puts("Couldn't allocate memory to the first player blocks");
+        return;
+    }
     int firstPlayerBlocksAmount = MAX_BLOCK_COUNT;
     pickBlocks(firstPlayerBlocks, MAX_BLOCK_COUNT);
     BLOCK *secondPlayerBlocks = (BLOCK *)malloc(sizeof(BLOCK) * MAX_BLOCK_COUNT);
+    if (secondPlayerBlocks == NULL)
+    {
+        puts("Couldn't allocate memory to the second player blocks");
+        free(firstPlayerBlocks);
+        return;
+    }
     int secondPlayerBlocksAmount = MAX_BLOCK_COUNT;
     pickBlocks(secondPlayerBlocks, MAX_BLOCK_COUNT);
     int *board = (int *)malloc(WIDTH * HEIGHT * sizeof(int));
-    // int **board;
+    if (board == NULL)
+    {
+        puts("Couldn't allocate memory to the board");
+        free(firstPlayerBlocks);
+        free(secondPlayerBlocks);
+        return;
+    }
     // ASCII Table: 32 for spaces, 35 for #
     createBoard(board, WIDTH, HEIGHT, OFF_VALUE);
 
@@ -152,11 +169,29 @@ void startGame()
         // Check if block list is empty for both players
         if (firstPlayerBlocksAmount <= 0)
         {
+            free(firstPlayerBlocks);
+            firstPlayerBlocks = (BLOCK *)malloc(sizeof(BLOCK) * MAX_BLOCK_COUNT);
+            if (firstPlayerBlocks == NULL)
+            {
+                puts("Couldn't allocate memory to first player blocks");
+                free(secondPlayerBlocks);
+                free(board);
+                return;
+            }
             pickBlocks(firstPlayerBlocks, MAX_BLOCK_COUNT);
             firstPlayerBlocksAmount = MAX_BLOCK_COUNT;
         }
         if (secondPlayerBlocksAmount <= 0)
         {
+            free(secondPlayerBlocks);
+            secondPlayerBlocks = (BLOCK *)malloc(sizeof(BLOCK) * MAX_BLOCK_COUNT);
+            if (secondPlayerBlocks == NULL)
+            {
+                puts("Couldn't allocate memory to second player blocks");
+                free(firstPlayerBlocks);
+                free(board);
+                return;
+            }
             pickBlocks(secondPlayerBlocks, MAX_BLOCK_COUNT);
             secondPlayerBlocksAmount = MAX_BLOCK_COUNT;
         }
@@ -187,7 +222,7 @@ void createBoard(int *board, int width, int height, int baseValue)
     }
 }
 
-void pickBlocks(BLOCK *blocks, const int blockCount)
+void pickBlocks(BLOCK *blocks, int blockCount)
 {
     // TODO: Apply Rarity
     for (int i = 0; i < blockCount; i++)
@@ -231,6 +266,7 @@ BLOCK *turn(int *board, BLOCK *playerBlocks, int *blocksAmount)
         rotate(rotatedBlock);
         if (compareBlock(rotatedBlock, &block))
         {
+            free(rotatedBlock);
             if (i == 0)
             {
                 break;
@@ -238,7 +274,8 @@ BLOCK *turn(int *board, BLOCK *playerBlocks, int *blocksAmount)
             continue;
         }
         rotatedBlocks++;
-        showedBlocks = (BLOCK *)realloc(showedBlocks, sizeof(BLOCK) * rotatedBlocks);
+        free(showedBlocks);
+        showedBlocks = (BLOCK *)malloc(sizeof(BLOCK) * rotatedBlocks);
         showedBlocks[rotatedBlocks - 1] = *rotatedBlock;
         free(rotatedBlock);
     }
@@ -247,7 +284,8 @@ BLOCK *turn(int *board, BLOCK *playerBlocks, int *blocksAmount)
     if (rotatedBlocks > 1)
     {
         printBlocks(showedBlocks, rotatedBlocks);
-        prompt = (char *)realloc(prompt, sizeof(char) * 36);
+        free(prompt);
+        prompt = (char *)malloc(sizeof(char) * 36);
         sprintf(prompt, "Choose your orientation [1-%d]: ", rotatedBlocks);
         int chosenRotation = readIntFromUser(prompt, 1, rotatedBlocks);
         block = showedBlocks[chosenRotation - 1];
@@ -261,7 +299,8 @@ BLOCK *turn(int *board, BLOCK *playerBlocks, int *blocksAmount)
 
     // Get the chosen abscissa
     int maxX = WIDTH - block.width + 1;
-    prompt = (char *)realloc(prompt, sizeof(char) * (29 + (int)(maxX / 10)));
+    free(prompt);
+    prompt = (char *)malloc(sizeof(char) * (29 + (int)(maxX / 10)));
     sprintf(prompt, "Choose your abscissa [1-%d]: ", maxX);
     int chosenX = readIntFromUser(prompt, 1, maxX);
     free(prompt);
@@ -325,6 +364,10 @@ void rotate(BLOCK *block)
     {
         for (int x = 0; x < MAX_BLOCK_WIDTH; x++)
         {
+            if (tempBlock.height - y - 1 < 0)
+            {
+                continue;
+            }
             block->block[x][tempBlock.height - y - 1] = tempBlock.block[y][x];
         }
     }
@@ -427,11 +470,11 @@ bool fall(int *board, BLOCK *block, int X)
     while (height + block->height <= HEIGHT)
     {
         int *boardCopy = (int *)malloc(WIDTH * HEIGHT * sizeof(int));
-        // createBoard(boardCopy, WIDTH, HEIGHT, OFF_VALUE);
         copyBoard(boardCopy, board);
         addBlock(boardCopy, block, X, height, ON_VALUE);
         if (totalSquares != countBoardSquares(boardCopy, ON_VALUE))
         {
+            free(boardCopy);
             if (height - 1 < 0)
             {
                 return false;
@@ -492,7 +535,6 @@ void removeCompletedLines(int *board)
 void printBlocks(BLOCK *blocks, int blocksAmount)
 {
     char spacing[6] = "     ";
-    int count = 0;
     for (int y = 0; y < MAX_BLOCK_HEIGHT; y++)
     {
         for (int i = 0; i < blocksAmount; i++)
@@ -506,11 +548,6 @@ void printBlocks(BLOCK *blocks, int blocksAmount)
                 else
                 {
                     printf("  ");
-                    count++;
-                    if (count >= 100)
-                    {
-                        printf("wtf %d\n", i);
-                    }
                 }
             }
             if (i != blocksAmount - 1)
@@ -529,12 +566,12 @@ void printBlock(const BLOCK block)
 
 void printBlockOffset(const BLOCK block, int offset)
 {
-    char *spacing = (char *)malloc(sizeof(char) * (offset + 1));
-    spacing = multiplyChar(' ', offset);
     for (int y = 0; y < block.height; y++)
     {
-        if (spacing != NULL)
-            printf("%s", spacing);
+        for (int i = 0; i < offset; i++)
+        {
+            printf(" ");
+        }
         for (int x = 0; x < block.width; x++)
         {
             if (block.block[y][x])
@@ -548,15 +585,10 @@ void printBlockOffset(const BLOCK block, int offset)
         }
         printf("\n");
     }
-    free(spacing);
 }
 
 char *multiplyChar(char character, int amount)
 {
-    if (amount == 0)
-    {
-        return NULL;
-    }
     char *multipliedChar = (char *)malloc(sizeof(char) * (amount + 1));
     for (int i = 0; i < amount; i++)
     {

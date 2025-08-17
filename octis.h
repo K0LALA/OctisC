@@ -19,7 +19,7 @@ typedef struct {
 void startGame();
 
 void createBoard(int *board, const int width, const int height, const int baseValue);
-void pickBlocks(BLOCK *blocks, const int blockCount);
+void pickBlocks(BLOCK *blocks, int blockCount);
 BLOCK *turn(int *board, BLOCK *playerBlocks, int *blocksAmount);
 
 int readIntFromUser(const char *prompt, int minimum, int maximum);

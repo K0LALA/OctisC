@@ -19,10 +19,9 @@ typedef struct {
 
 void startGame();
 
-void createBoard(int **board, const int width, const int height, const int baseValue);
-void createEmptyBlock(bool **block, int width, int height);
+void createBoard(int *board, const int width, const int height, const int baseValue);
 void pickBlocks(BLOCK *blocks, const int blockCount);
-bool turn(int **board, BLOCK *playerBlocks, int *blocksAmount);
+bool turn(int *board, BLOCK *playerBlocks, int *blocksAmount);
 
 int readIntFromUser(const char *prompt, int minimum, int maximum);
 
@@ -30,18 +29,18 @@ void rotate(BLOCK *block);
 void flip(BLOCK *block);
 bool compareBlock(BLOCK *blockA, BLOCK *blockB);
 void copyBlock(BLOCK *blockA, BLOCK *blockB);
-void copyBoard(int **boardA, int **boardB);
-void addBlock(int **board, BLOCK *block, int X, int Y, int onValue);
-bool fall(int **board, BLOCK *block, int X);
+void copyBoard(int *boardA, int *boardB);
+void addBlock(int *board, BLOCK *block, int X, int Y, int onValue);
+bool fall(int *board, BLOCK *block, int X);
 bool isLineFinished(int *line, int onValue);
-void removeCompletedLines(int **board);
+void removeCompletedLines(int *board);
 
 void printBlocks(BLOCK *blocks, int blocksAmount);
 void printBlock(const BLOCK block);
 void printBlockOffset(const BLOCK block, int offset);
 char* multiplyChar(char character, int amount);
 void printColored(int color, const char *text);
-void printBoard(int **board);
+void printBoard(int *board);
 
 
 #endif

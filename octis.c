@@ -232,10 +232,10 @@ void pickBlocks(BLOCK *blocks, int blockCount)
         bool doFlip = randomValue % 2 == 0;
         int rotationCount = randomValue % 3;
 
-        blocks[i] = BLOCKS[blockIndex];
+        memcpy (&blocks[i], &BLOCKS[blockIndex], sizeof(BLOCK));
         if (doFlip)
             flip(&blocks[i]);
-        for (int i = 0; i < rotationCount; i++)
+        for (int r = 0; r < rotationCount; r++)
             rotate(&blocks[i]);
     }
 }
@@ -256,13 +256,13 @@ BLOCK *turn(int *board, BLOCK *playerBlocks, int *blocksAmount)
     BLOCK block = playerBlocks[blockIndex - 1];
 
     // Print the chosen block above the board
-    BLOCK *showedBlocks = (BLOCK *)malloc(sizeof(BLOCK));
+    BLOCK *showedBlocks = (BLOCK *)malloc(sizeof(BLOCK) * 4);
     showedBlocks[0] = block;
-    unsigned short rotatedBlocks = 1;
+    unsigned short rotatedBlocksCount = 1;
     for (int i = 0; i < 3; i++)
     {
         BLOCK *rotatedBlock = (BLOCK *)malloc(sizeof(BLOCK));
-        copyBlock(rotatedBlock, &showedBlocks[rotatedBlocks - 1]);
+        copyBlock(rotatedBlock, &showedBlocks[rotatedBlocksCount - 1]);
         rotate(rotatedBlock);
         if (compareBlock(rotatedBlock, &block))
         {
@@ -273,21 +273,19 @@ BLOCK *turn(int *board, BLOCK *playerBlocks, int *blocksAmount)
             }
             continue;
         }
-        rotatedBlocks++;
-        free(showedBlocks);
-        showedBlocks = (BLOCK *)malloc(sizeof(BLOCK) * rotatedBlocks);
-        showedBlocks[rotatedBlocks - 1] = *rotatedBlock;
+        rotatedBlocksCount++;
+        showedBlocks[rotatedBlocksCount - 1] = *rotatedBlock;
         free(rotatedBlock);
     }
 
     // Get the chosen orientation from the player
-    if (rotatedBlocks > 1)
+    if (rotatedBlocksCount > 1)
     {
-        printBlocks(showedBlocks, rotatedBlocks);
+        printBlocks(showedBlocks, rotatedBlocksCount);
         free(prompt);
         prompt = (char *)malloc(sizeof(char) * 36);
-        sprintf(prompt, "Choose your orientation [1-%d]: ", rotatedBlocks);
-        int chosenRotation = readIntFromUser(prompt, 1, rotatedBlocks);
+        sprintf(prompt, "Choose your orientation [1-%d]: ", rotatedBlocksCount);
+        int chosenRotation = readIntFromUser(prompt, 1, rotatedBlocksCount);
         block = showedBlocks[chosenRotation - 1];
     }
     free(showedBlocks);
@@ -308,6 +306,7 @@ BLOCK *turn(int *board, BLOCK *playerBlocks, int *blocksAmount)
     // Place the block in the board
     if (!fall(board, &block, chosenX - 1))
     {
+        free(playerBlocks);
         return NULL;
     }
 
@@ -357,20 +356,27 @@ int readIntFromUser(const char *prompt, int minimum, int maximum)
 
 void rotate(BLOCK *block)
 {
-    BLOCK tempBlock = *block;
-    block->width = block->height;
-    block->height = tempBlock.width;
-    for (int y = 0; y < MAX_BLOCK_HEIGHT; y++)
+    BLOCK *tempBlock = (BLOCK *)malloc(sizeof(BLOCK));
+    copyBlock(tempBlock, block);
+    block->width = tempBlock->height;
+    block->height = tempBlock->width;
+    for (int y = 0; y < MAX_BLOCK_SIZE; y++)
     {
-        for (int x = 0; x < MAX_BLOCK_WIDTH; x++)
+        for (int x = 0; x < MAX_BLOCK_SIZE; x++)
         {
-            if (tempBlock.height - y - 1 < 0)
-            {
-                continue;
-            }
-            block->block[x][tempBlock.height - y - 1] = tempBlock.block[y][x];
+            block->block[y][x] = false;
         }
     }
+
+    for (int y = 0; y < tempBlock->height; y++)
+    {
+        for (int x = 0; x < tempBlock->width; x++)
+        {
+            block->block[x][block->width - y - 1] = tempBlock->block[y][x];
+        }
+    }
+
+    free(tempBlock);
 }
 
 void flip(BLOCK *block)
@@ -387,9 +393,9 @@ void flip(BLOCK *block)
 
 bool compareBlock(BLOCK *blockA, BLOCK *blockB)
 {
-    for (int y = 0; y < MAX_BLOCK_HEIGHT; y++)
+    for (int y = 0; y < MAX_BLOCK_SIZE; y++)
     {
-        for (int x = 0; x < MAX_BLOCK_WIDTH; x++)
+        for (int x = 0; x < MAX_BLOCK_SIZE; x++)
         {
             if (blockA->block[y][x] != blockB->block[y][x])
                 return false;
@@ -400,9 +406,9 @@ bool compareBlock(BLOCK *blockA, BLOCK *blockB)
 
 void copyBlock(BLOCK *blockA, BLOCK *blockB)
 {
-    for (int y = 0; y < MAX_BLOCK_HEIGHT; y++)
+    for (int y = 0; y < MAX_BLOCK_SIZE; y++)
     {
-        for (int x = 0; x < MAX_BLOCK_WIDTH; x++)
+        for (int x = 0; x < MAX_BLOCK_SIZE; x++)
         {
             blockA->block[y][x] = blockB->block[y][x];
         }
@@ -535,7 +541,7 @@ void removeCompletedLines(int *board)
 void printBlocks(BLOCK *blocks, int blocksAmount)
 {
     char spacing[6] = "     ";
-    for (int y = 0; y < MAX_BLOCK_HEIGHT; y++)
+    for (int y = 0; y < MAX_BLOCK_SIZE; y++)
     {
         for (int i = 0; i < blocksAmount; i++)
         {
@@ -559,12 +565,12 @@ void printBlocks(BLOCK *blocks, int blocksAmount)
     }
 }
 
-void printBlock(const BLOCK block)
+void printBlock(BLOCK block)
 {
     printBlockOffset(block, 0);
 }
 
-void printBlockOffset(const BLOCK block, int offset)
+void printBlockOffset(BLOCK block, int offset)
 {
     for (int y = 0; y < block.height; y++)
     {

@@ -1,15 +1,14 @@
 #ifndef OCTIS_H
 #define OCTIS_H
 
-#define MAX_BLOCK_HEIGHT 5
-#define MAX_BLOCK_WIDTH 5
+#define MAX_BLOCK_SIZE 5
 #define MAX_BLOCK_COUNT 3
 
 #define OFF_VALUE 32
 #define ON_VALUE 35
 
 typedef struct {
-    bool block[MAX_BLOCK_HEIGHT][MAX_BLOCK_WIDTH];
+    bool block[MAX_BLOCK_SIZE][MAX_BLOCK_SIZE];
     int width;
     int height;
     int count;
@@ -35,8 +34,8 @@ bool isLineFinished(int *line, int onValue);
 void removeCompletedLines(int *board);
 
 void printBlocks(BLOCK *blocks, int blocksAmount);
-void printBlock(const BLOCK block);
-void printBlockOffset(const BLOCK block, int offset);
+void printBlock(BLOCK block);
+void printBlockOffset(BLOCK block, int offset);
 char* multiplyChar(char character, int amount);
 void printColored(int color, const char *text);
 void printBoard(int *board);

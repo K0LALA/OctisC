@@ -16,6 +16,7 @@ const BLOCK BLOCKS[] = {
      1,
      1,
      1,
+     31,
      RARE},
 
     {{{1, 1, 0},
@@ -24,12 +25,14 @@ const BLOCK BLOCKS[] = {
      3,
      3,
      5,
+     31,
      COMMON},
 
     {{{1, 1, 1, 1}},
      4,
      1,
      4,
+     31,
      COMMON},
 
     {{{1, 0, 0},
@@ -37,6 +40,7 @@ const BLOCK BLOCKS[] = {
      3,
      2,
      4,
+     31,
      COMMON},
 
     {{{0, 1},
@@ -46,6 +50,7 @@ const BLOCK BLOCKS[] = {
      2,
      4,
      5,
+     31,
      COMMON},
 
     {{{1, 1, 1},
@@ -54,6 +59,7 @@ const BLOCK BLOCKS[] = {
      3,
      3,
      8,
+     31,
      RARE},
 
     {{{0, 1, 1},
@@ -61,6 +67,7 @@ const BLOCK BLOCKS[] = {
      3,
      2,
      4,
+     31,
      COMMON},
 
     {{{1, 0},
@@ -69,6 +76,7 @@ const BLOCK BLOCKS[] = {
      2,
      3,
      4,
+     31,
      COMMON},
 
     {{{1, 0, 1},
@@ -76,6 +84,7 @@ const BLOCK BLOCKS[] = {
      3,
      2,
      5,
+     31,
      COMMON},
 
     {{{0, 0, 1},
@@ -84,6 +93,7 @@ const BLOCK BLOCKS[] = {
      3,
      3,
      5,
+     31,
      COMMON},
 
     {{{0, 1, 0},
@@ -92,6 +102,7 @@ const BLOCK BLOCKS[] = {
      3,
      3,
      5,
+     31,
      COMMON},
 
     {{{1, 1, 0},
@@ -99,6 +110,7 @@ const BLOCK BLOCKS[] = {
      3,
      2,
      4,
+     31,
      COMMON},
 
     {{{0, 1, 1},
@@ -109,6 +121,7 @@ const BLOCK BLOCKS[] = {
      3,
      5,
      8,
+     31,
      RARE}};
 
 const int WIDTH = 8;
@@ -116,14 +129,14 @@ const int HEIGHT = 15;
 
 int main(int argc, char **argv)
 {
-    printColored(34, "Welcome to Octis!\n");
+    printColored(1, "Welcome to Octis!\n");
     printf(" _____     _   _     \n");
     printf("|     |___| |_|_|___ \n");
     printf("|  |  |  _|  _| |_ -|\n");
     printf("|_____|___|_| |_|___|\n");
     printf("This game is a 2-player Tetris game.\n");
     printf("In order to win, the oponent has to place a block over the limit.\n");
-
+    
     srand(time(NULL));
     startGame();
 
@@ -158,7 +171,6 @@ void startGame()
         free(secondPlayerBlocks);
         return;
     }
-    // ASCII Table: 32 for spaces, 35 for #
     createBoard(board, WIDTH, HEIGHT, OFF_VALUE);
 
     do
@@ -231,12 +243,14 @@ void pickBlocks(BLOCK *blocks, int blockCount)
         int blockIndex = randomValue % BLOCK_COUNT;
         bool doFlip = randomValue % 2 == 0;
         int rotationCount = randomValue % 3;
+        int color = 31 + randomValue % 5;
 
         memcpy (&blocks[i], &BLOCKS[blockIndex], sizeof(BLOCK));
         if (doFlip)
             flip(&blocks[i]);
         for (int r = 0; r < rotationCount; r++)
             rotate(&blocks[i]);
+        blocks[i].color = color;
     }
 }
 
@@ -416,6 +430,7 @@ void copyBlock(BLOCK *blockA, BLOCK *blockB)
     blockA->width = blockB->width;
     blockA->height = blockB->height;
     blockA->count = blockB->count;
+    blockA->color = blockB->color;
     // Not really necessary since it's not used after block choosing
     // blockA->chance = blockB->chance;
 }
@@ -435,7 +450,7 @@ void copyBoard(int *boardA, int *boardB)
     }
 }
 
-int countBoardSquares(int *board, int onValue)
+int countBoardSquares(int *board, int offValue)
 {
     int *ptr = board;
     int count = 0;
@@ -443,7 +458,7 @@ int countBoardSquares(int *board, int onValue)
     {
         for (int x = 0; x < WIDTH; x++)
         {
-            if (*ptr == onValue)
+            if (*ptr != offValue)
                 count++;
             ptr++;
         }
@@ -451,7 +466,7 @@ int countBoardSquares(int *board, int onValue)
     return count;
 }
 
-void addBlock(int *board, BLOCK *block, int X, int Y, int onValue)
+void addBlock(int *board, BLOCK *block, int X, int Y)
 {
     int *ptr = board;
     ptr += Y * WIDTH + X;
@@ -461,7 +476,7 @@ void addBlock(int *board, BLOCK *block, int X, int Y, int onValue)
         {
             if (block->block[y][x])
             {
-                *ptr = onValue;
+                *ptr = block->color;
             }
             ptr++;
         }
@@ -471,14 +486,14 @@ void addBlock(int *board, BLOCK *block, int X, int Y, int onValue)
 
 bool fall(int *board, BLOCK *block, int X)
 {
-    int totalSquares = block->count + countBoardSquares(board, ON_VALUE);
+    int totalSquares = block->count + countBoardSquares(board, OFF_VALUE);
     int height = 0;
     while (height + block->height <= HEIGHT)
     {
         int *boardCopy = (int *)malloc(WIDTH * HEIGHT * sizeof(int));
         copyBoard(boardCopy, board);
-        addBlock(boardCopy, block, X, height, ON_VALUE);
-        if (totalSquares != countBoardSquares(boardCopy, ON_VALUE))
+        addBlock(boardCopy, block, X, height);
+        if (totalSquares != countBoardSquares(boardCopy, OFF_VALUE))
         {
             free(boardCopy);
             if (height - 1 < 0)
@@ -490,15 +505,15 @@ bool fall(int *board, BLOCK *block, int X)
         height++;
         free(boardCopy);
     }
-    addBlock(board, block, X, height - 1, ON_VALUE);
+    addBlock(board, block, X, height - 1);
     return true;
 }
 
-bool isLineFinished(int *line, int onValue)
+bool isLineFinished(int *line, int offValue)
 {
     for (int x = 0; x < WIDTH; x++)
     {
-        if (line[x] != onValue)
+        if (line[x] == offValue)
         {
             return false;
         }
@@ -512,7 +527,7 @@ void removeCompletedLines(int *board)
     int *ptr = board;
     for (int y = 0; y < HEIGHT; y++)
     {
-        if (isLineFinished(ptr, ON_VALUE))
+        if (isLineFinished(ptr, OFF_VALUE))
         {
             int *ptrCopy = ptr;
             for (int i = y; i > 0; i--)
@@ -549,7 +564,7 @@ void printBlocks(BLOCK *blocks, int blocksAmount)
             {
                 if (y < blocks[i].height && blocks[i].block[y][x])
                 {
-                    printf("# ");
+                    printColored(blocks[i].color, "■ ");
                 }
                 else
                 {
@@ -582,7 +597,7 @@ void printBlockOffset(BLOCK block, int offset)
         {
             if (block.block[y][x])
             {
-                printf("# ");
+                printColored(block.color, "■ ");
             }
             else
             {
@@ -615,7 +630,10 @@ void printBoard(int *board)
     {
         for (int x = 0; x < WIDTH; x++)
         {
-            printf("%c ", (char)*ptr);
+            if (*ptr != OFF_VALUE)
+                printColored(*ptr, "■ ");
+            else
+                printf("  ");
             ptr++;
         }
         printf("%d\n", HEIGHT - y);

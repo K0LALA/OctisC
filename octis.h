@@ -4,14 +4,14 @@
 #define MAX_BLOCK_SIZE 5
 #define MAX_BLOCK_COUNT 3
 
-#define OFF_VALUE 32
-#define ON_VALUE 35
+#define OFF_VALUE 0
 
 typedef struct {
     bool block[MAX_BLOCK_SIZE][MAX_BLOCK_SIZE];
     int width;
     int height;
     int count;
+    int color;
     float chance;
 } BLOCK;
 
@@ -28,9 +28,10 @@ void flip(BLOCK *block);
 bool compareBlock(BLOCK *blockA, BLOCK *blockB);
 void copyBlock(BLOCK *blockA, BLOCK *blockB);
 void copyBoard(int *boardA, int *boardB);
-void addBlock(int *board, BLOCK *block, int X, int Y, int onValue);
+int countBoardSquares(int *board, int offValue);
+void addBlock(int *board, BLOCK *block, int X, int Y);
 bool fall(int *board, BLOCK *block, int X);
-bool isLineFinished(int *line, int onValue);
+bool isLineFinished(int *line, int offValue);
 void removeCompletedLines(int *board);
 
 void printBlocks(BLOCK *blocks, int blocksAmount);

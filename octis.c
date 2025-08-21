@@ -492,7 +492,33 @@ bool fall(int *board, BLOCK *block, int X)
     {
         int *boardCopy = (int *)malloc(WIDTH * HEIGHT * sizeof(int));
         copyBoard(boardCopy, board);
+        // For the first iteration, we consider the block as a full rectangle to avoid clipping
+        int addedSquares = 0;
+        if (height == 0)
+        {
+            BLOCK* fullRectangle = (BLOCK *)malloc(sizeof(BLOCK));
+            copyBlock(fullRectangle, block);
+            for (int x = 0; x < block->width; x++)
+            {
+                bool blocksStarted = false;
+                for (int y = block->height - 1; y >= 0; y--)
+                {
+                    if (!blocksStarted && fullRectangle->block[y][x])
+                    {
+                        blocksStarted = true;
+                    }
+                    if (blocksStarted && !fullRectangle->block[y][x])
+                    {
+                        fullRectangle->block[y][x] = true;
+                        addedSquares++;
+                    }
+                }
+            }
+            addBlock(boardCopy, fullRectangle, X, height);
+            free(fullRectangle);
+        }
         addBlock(boardCopy, block, X, height);
+        totalSquares += addedSquares;
         if (totalSquares != countBoardSquares(boardCopy, OFF_VALUE))
         {
             free(boardCopy);
@@ -502,6 +528,7 @@ bool fall(int *board, BLOCK *block, int X)
             }
             break;
         }
+        totalSquares -= addedSquares;
         height++;
         free(boardCopy);
     }

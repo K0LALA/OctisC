@@ -11,11 +11,6 @@
 // TODO: tmp
 SDL_Event event;
 
-const int BLOCK_COUNT = 13;
-
-const float RARE = 0.04f;
-const float COMMON = 0.088f;
-
 const BLOCK BLOCKS[] = {
     {{{1}},
      1,
@@ -258,16 +253,27 @@ void createBoard(int board[][WIDTH], int width, int height, int baseValue)
 
 void pickBlocks(BLOCK *blocks, int blockCount)
 {
-    // TODO: Apply Rarity
     for (int i = 0; i < blockCount; i++)
     {
         int randomValue = rand();
-        int blockIndex = randomValue % BLOCK_COUNT;
+        int blockChooser = randomValue % CHANCES_TOTAL;
+        short blockIndex = 0;
+        while (blockChooser > 0)
+        {
+            blockChooser -= BLOCKS[blockIndex].chance;
+            blockIndex++;
+        }
+        // Shouldn't happen, just in case
+        if (blockIndex > BLOCK_COUNT)
+        {
+            printf("blockIndex over limit: %d\n", blockIndex);
+            blockIndex = BLOCK_COUNT;
+        }
         bool doFlip = randomValue % 2 == 0;
         int rotationCount = randomValue % 3;
         int color = 31 + randomValue % 5;
 
-        memcpy (&blocks[i], &BLOCKS[blockIndex], sizeof(BLOCK));
+        memcpy (&blocks[i], &BLOCKS[blockIndex - 1], sizeof(BLOCK));
         if (doFlip)
             flip(&blocks[i]);
         for (int r = 0; r < rotationCount; r++)

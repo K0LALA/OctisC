@@ -3,8 +3,13 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
+#include <SDL.h>
 
+#include "screen.h"
 #include "octis.h"
+
+// TODO: tmp
+SDL_Event event;
 
 const int BLOCK_COUNT = 13;
 
@@ -127,6 +132,7 @@ const BLOCK BLOCKS[] = {
 
 int main(int argc, char **argv)
 {
+    // TODO: Print this in the window before starting the game
     printColored(1, "Welcome to Octis!\n");
     printf(" _____     _   _     \n");
     printf("|     |___| |_|_|___ \n");
@@ -135,8 +141,10 @@ int main(int argc, char **argv)
     printf("This game is a 2-player Tetris game.\n");
     printf("In order to win, the oponent has to place a block over the limit.\n");
     
-    srand(time(NULL));
+    srand((int)time(NULL));
+    init();
     startGame();
+    finish();
 
     return 0;
 }
@@ -164,7 +172,35 @@ void startGame()
     int board[HEIGHT][WIDTH];
     createBoard(board, WIDTH, HEIGHT, OFF_VALUE);
 
-    do
+    // Game loop
+    bool gameRunning = true;
+    while (gameRunning)
+    {
+        // Process through each event
+        while(SDL_PollEvent(&event))
+        {
+            switch(event.type)
+            {
+                case SDL_KEYDOWN:
+                    int keypressed = event.key.keysym.sym;
+                    if (keypressed == QUIT_KEY)
+                    {
+                        gameRunning = 0;
+                        break;
+                    }
+                    break;
+
+                case SDL_QUIT:
+                    gameRunning = 0;
+                    break;
+
+                case SDL_KEYUP:
+                    break;
+            }
+        }
+    }
+
+    /*do
     {
         firstPlayerToPlay = !firstPlayerToPlay;
         printf("Player %d to play!\n", !firstPlayerToPlay + 1);
@@ -201,7 +237,7 @@ void startGame()
             firstPlayerBlocks = turn(board, firstPlayerBlocks, &firstPlayerBlocksAmount);
         else
             secondPlayerBlocks = turn(board, secondPlayerBlocks, &secondPlayerBlocksAmount);
-    } while (firstPlayerBlocks != NULL && secondPlayerBlocks != NULL);
+    } while (firstPlayerBlocks != NULL && secondPlayerBlocks != NULL);*/
 
     printf("\nPlayer %d lost!\n", !firstPlayerToPlay + 1);
 

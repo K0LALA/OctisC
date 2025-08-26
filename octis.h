@@ -1,6 +1,8 @@
 #ifndef OCTIS_H
 #define OCTIS_H
 
+#define QUIT_KEY SDLK_ESCAPE
+
 #define WIDTH 8
 #define HEIGHT 15
 

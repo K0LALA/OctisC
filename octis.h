@@ -4,10 +4,16 @@
 #define WIDTH 8
 #define HEIGHT 15
 
+#define BLOCK_COUNT 13
+
 #define MAX_BLOCK_SIZE 5
 #define MAX_BLOCK_COUNT 3
 
 #define OFF_VALUE 0
+
+#define CHANCES_TOTAL 1000
+#define RARE 40
+#define COMMON 88
 
 typedef struct {
     bool block[MAX_BLOCK_SIZE][MAX_BLOCK_SIZE];
@@ -15,7 +21,7 @@ typedef struct {
     int height;
     int count;
     int color;
-    float chance;
+    int chance;
 } BLOCK;
 
 void startGame();

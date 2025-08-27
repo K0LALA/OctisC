@@ -10,15 +10,16 @@ SDL_Window *window = NULL;
 SDL_Renderer *renderer;
 SDL_Color foregroundColor = {255, 255, 255, 255};
 
+// Follows the same order as ANSI escape codes for colors (30-37):
 static const SDL_Color COLORS[] = {
-    {50, 50, 50, 255},         // Black
-    {255, 0, 0, 255},       // Red
-    {0, 255, 0, 255},       // Green
-    {255, 255, 0, 255},     // Yellow
-    {0, 0, 255, 255},       // Blue
-    {255, 0, 255, 255},     // Magenta
-    {0, 255, 255, 255},     // Cyan
-    {255, 255, 255, 255}    // White
+    {134, 134, 141, 255},   // Black
+    {243, 139, 168, 255},   // Red
+    {166, 227, 161, 255},   // Green
+    {249, 226, 175, 255},   // Yellow
+    {137, 180, 250, 255},   // Blue
+    {203, 166, 247, 255},   // Magenta
+    {137, 220, 235, 255},   // Cyan
+    {205, 214, 244, 255}    // White
 };
 
 void init()
@@ -182,10 +183,10 @@ void renderBoard(int board[][WIDTH], int x, int y)
             if (board[boardY][boardX] != OFF_VALUE)
             {
                 renderCell(COLORS[board[boardY][boardX] - 30], x + boardX * BLOCK_SIZE, y + boardY * BLOCK_SIZE);
-            }
+            }/*
             else {
                 renderCell(COLORS[0], x + boardX * BLOCK_SIZE, y + boardY * BLOCK_SIZE);
-            }
+            }*/
         }
     }
 }

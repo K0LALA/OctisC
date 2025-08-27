@@ -8,17 +8,7 @@
 #include "octis.h"
 #include "screen.h"
 
-// Follows the same order as ANSI escape codes for colors (30-37):
-static const SDL_Color COLORS[] = {
-    {0, 0, 0, 255},         // Black
-    {255, 0, 0, 255},       // Red
-    {0, 255, 0, 255},       // Green
-    {255, 255, 0, 255},     // Yellow
-    {0, 0, 255, 255},       // Blue
-    {255, 0, 255, 255},     // Magenta
-    {0, 255, 255, 255},     // Cyan
-    {255, 255, 255, 255}    // White
-};
+SDL_Color pureWhite = {255, 255, 255, 255};
 
 SDL_Event event;
 int keypressed;
@@ -148,10 +138,10 @@ int main(int argc, char **argv)
     srand((int)time(NULL));
     init();
 
-    renderText("Octis", COLORS[WHITE], -1, 25, 64);
-    renderText("This game is a 2-player Tetris game.", COLORS[WHITE], -1, 350, 32);
-    renderText("To win, make the opponent place a block above the limit!", COLORS[WHITE], -1, 400, 32);
-    renderText("Press any key to start.", COLORS[WHITE], -1, 850, 48);
+    renderText("Octis", pureWhite, -1, 25, 64);
+    renderText("This game is a 2-player Tetris game.", pureWhite, -1, 350, 32);
+    renderText("To win, make the opponent place a block above the limit!", pureWhite, -1, 400, 32);
+    renderText("Press any key to start.", pureWhite, -1, 850, 48);
     updateScreen();
     // Wait for ENTER
     bool gameStarted = false;

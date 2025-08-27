@@ -1,7 +1,18 @@
+#include <stdbool.h>
+
 #ifndef OCTIS_H
 #define OCTIS_H
 
 #define QUIT_KEY SDLK_ESCAPE
+
+#define BLACK 0
+#define RED 1
+#define GREEN 2
+#define YELLOW 3
+#define BLUE 4
+#define MAGENTA 5
+#define CYAN 6
+#define WHITE 7
 
 #define WIDTH 8
 #define HEIGHT 15
@@ -17,7 +28,8 @@
 #define RARE 40
 #define COMMON 88
 
-typedef struct {
+typedef struct
+{
     bool block[MAX_BLOCK_SIZE][MAX_BLOCK_SIZE];
     int width;
     int height;
@@ -48,9 +60,8 @@ void removeCompletedLines(int board[][WIDTH]);
 void printBlocks(BLOCK *blocks, int blocksAmount);
 void printBlock(BLOCK block);
 void printBlockOffset(BLOCK block, int offset);
-char* multiplyChar(char character, int amount);
+char *multiplyChar(char character, int amount);
 void printColored(int color, const char *text);
 void printBoard(int board[][WIDTH]);
-
 
 #endif

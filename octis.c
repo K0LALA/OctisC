@@ -5,15 +5,24 @@
 #include <time.h>
 #include <SDL2/SDL.h>
 
-#include "screen.h"
 #include "octis.h"
+#include "screen.h"
 
+// Follows the same order as ANSI escape codes for colors (30-37):
+static const SDL_Color COLORS[] = {
+    {0, 0, 0, 255},         // Black
+    {255, 0, 0, 255},       // Red
+    {0, 255, 0, 255},       // Green
+    {255, 255, 0, 255},     // Yellow
+    {0, 0, 255, 255},       // Blue
+    {255, 0, 255, 255},     // Magenta
+    {0, 255, 255, 255},     // Cyan
+    {255, 255, 255, 255}    // White
+};
 
-SDL_Color WHITE = {255, 255, 255, 255};
-SDL_Color BLACK = {0, 0, 0, 255};
-SDL_Color TRANSPARENT = {0, 0, 0, 0};
-// TODO: tmp
 SDL_Event event;
+int keypressed;
+int buttonpressed;
 
 const BLOCK BLOCKS[] = {
     {{{1}},
@@ -126,35 +135,63 @@ const BLOCK BLOCKS[] = {
      5,
      8,
      31,
-     RARE}
-};
+     RARE}};
 
 int main(int argc, char **argv)
 {
-    // TODO: Print this in the window before starting the game
-    printColored(1, "Welcome to Octis!\n");
+    printColored(31, "Welcome to Octis!\n");
     printf(" _____     _   _     \n");
     printf("|     |___| |_|_|___ \n");
     printf("|  |  |  _|  _| |_ -|\n");
     printf("|_____|___|_| |_|___|\n");
-    printf("This game is a 2-player Tetris game.\n");
-    printf("In order to win, the oponent has to place a block over the limit.\n");
-    
+
     srand((int)time(NULL));
     init();
-    renderText("Octis", WHITE, -1, 25, 64);
-    renderText("This game is a 2-player Tetris game.", WHITE, -1, 350, 32);
-    renderText("To win, make the opponent place a block above the limit!", WHITE, -1, 400, 32);
-    renderText("Press ENTER to start the game.", WHITE, -1, 850, 48);
+
+    renderText("Octis", COLORS[WHITE], -1, 25, 64);
+    renderText("This game is a 2-player Tetris game.", COLORS[WHITE], -1, 350, 32);
+    renderText("To win, make the opponent place a block above the limit!", COLORS[WHITE], -1, 400, 32);
+    renderText("Press any key to start.", COLORS[WHITE], -1, 850, 48);
     updateScreen();
+    // Wait for ENTER
+    bool gameStarted = false;
+    while (!gameStarted)
+    {
+        // while loop to remove all pending events which could cause issues in the next step
+        while (SDL_PollEvent(&event))
+        {
+            switch (event.type)
+            {
+            case SDL_KEYUP:
+                keypressed = event.key.keysym.sym;
+                if (keypressed == QUIT_KEY)
+                {
+                    finish();
+                    return EXIT_SUCCESS;
+                }
+                gameStarted = true;
+                break;
+
+            case SDL_MOUSEBUTTONUP:
+                gameStarted = true;
+                break;
+
+            case SDL_QUIT:
+                finish();
+                return EXIT_SUCCESS;
+            }
+        }
+    }
+    clearScreen();
     startGame();
     finish();
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 void startGame()
 {
+    puts("Game started!\n");
     bool firstPlayerToPlay = false;
     BLOCK *firstPlayerBlocks = (BLOCK *)malloc(sizeof(BLOCK) * MAX_BLOCK_COUNT);
     if (firstPlayerBlocks == NULL)
@@ -175,34 +212,7 @@ void startGame()
     pickBlocks(secondPlayerBlocks, MAX_BLOCK_COUNT);
     int board[HEIGHT][WIDTH];
     createBoard(board, WIDTH, HEIGHT, OFF_VALUE);
-
-    // Game loop
-    bool gameRunning = true;
-    while (gameRunning)
-    {
-        // Process through each event
-        while(SDL_PollEvent(&event))
-        {
-            switch(event.type)
-            {
-                case SDL_KEYDOWN:
-                    int keypressed = event.key.keysym.sym;
-                    if (keypressed == QUIT_KEY)
-                    {
-                        gameRunning = 0;
-                        break;
-                    }
-                    break;
-
-                case SDL_QUIT:
-                    gameRunning = 0;
-                    break;
-
-                case SDL_KEYUP:
-                    break;
-            }
-        }
-    }
+    addBlock(board, &firstPlayerBlocks[0], 0, 2);
 
     /*do
     {
@@ -244,6 +254,8 @@ void startGame()
     } while (firstPlayerBlocks != NULL && secondPlayerBlocks != NULL);*/
 
     printf("\nPlayer %d lost!\n", !firstPlayerToPlay + 1);
+    renderScreen(board, firstPlayerBlocks, firstPlayerBlocksAmount, secondPlayerBlocks, secondPlayerBlocksAmount, firstPlayerToPlay);
+    SDL_Delay(10000);
 
     free(firstPlayerBlocks);
     free(secondPlayerBlocks);
@@ -282,7 +294,7 @@ void pickBlocks(BLOCK *blocks, int blockCount)
         int rotationCount = randomValue % 3;
         int color = 31 + randomValue % 5;
 
-        memcpy (&blocks[i], &BLOCKS[blockIndex - 1], sizeof(BLOCK));
+        memcpy(&blocks[i], &BLOCKS[blockIndex - 1], sizeof(BLOCK));
         if (doFlip)
             flip(&blocks[i]);
         for (int r = 0; r < rotationCount; r++)
@@ -523,7 +535,7 @@ bool fall(int board[][WIDTH], BLOCK *block, int X)
         int addedSquares = 0;
         if (height == 0)
         {
-            BLOCK* fullRectangle = (BLOCK *)malloc(sizeof(BLOCK));
+            BLOCK *fullRectangle = (BLOCK *)malloc(sizeof(BLOCK));
             copyBlock(fullRectangle, block);
             for (int x = 0; x < block->width; x++)
             {

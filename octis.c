@@ -3,11 +3,15 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
-#include <SDL.h>
+#include <SDL2/SDL.h>
 
 #include "screen.h"
 #include "octis.h"
 
+
+SDL_Color WHITE = {255, 255, 255, 255};
+SDL_Color BLACK = {0, 0, 0, 255};
+SDL_Color TRANSPARENT = {0, 0, 0, 0};
 // TODO: tmp
 SDL_Event event;
 
@@ -138,6 +142,11 @@ int main(int argc, char **argv)
     
     srand((int)time(NULL));
     init();
+    renderText("Octis", WHITE, -1, 25, 64);
+    renderText("This game is a 2-player Tetris game.", WHITE, -1, 350, 32);
+    renderText("To win, make the opponent place a block above the limit!", WHITE, -1, 400, 32);
+    renderText("Press ENTER to start the game.", WHITE, -1, 850, 48);
+    updateScreen();
     startGame();
     finish();
 

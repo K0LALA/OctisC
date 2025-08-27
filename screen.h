@@ -12,6 +12,8 @@
 #define BLOCKS_WIDTH 200
 #define BLOCKS_MARGIN 100
 
+#define BOARD_MARGIN 5
+
 #define FONT_NOTO_SANS "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"
 
 void init();

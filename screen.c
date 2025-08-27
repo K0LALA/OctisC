@@ -71,12 +71,12 @@ void clearScreen()
 
 void renderScreen(int board[][WIDTH], BLOCK *firstBlocks, int firstBlocksAmount, BLOCK *secondBlocks, int secondBlocksAmount, bool firstPlayerToPlay)
 {
-    renderBoard(board, (SCREEN_WIDTH - WIDTH * BLOCK_SIZE) / 2, 50);
-    renderBlocks(firstBlocks, firstBlocksAmount, 50, 30);
-    renderBlocks(secondBlocks, secondBlocksAmount, SCREEN_WIDTH - BLOCKS_WIDTH - 50, 30);
+    renderBoard(board, (SCREEN_WIDTH - WIDTH * BLOCK_SIZE) / 2, 100);
+    renderBlocks(firstBlocks, firstBlocksAmount, 100, 50);
+    renderBlocks(secondBlocks, secondBlocksAmount, SCREEN_WIDTH - BLOCKS_WIDTH - 100, 50);
     char playerText[19];
     sprintf(playerText, "Player %d to play!", !firstPlayerToPlay + 1);
-    renderText(playerText, foregroundColor, -1, 900, 32);
+    renderText(playerText, foregroundColor, -1, 950, 32);
 
     SDL_RenderPresent(renderer);
 }
@@ -176,6 +176,24 @@ static void renderBlock(BLOCK block, SDL_Color color, int x, int y)
 
 void renderBoard(int board[][WIDTH], int x, int y)
 {
+    SDL_Rect borderRect, insideRect;
+    borderRect.x = x;
+    borderRect.y = y;
+    borderRect.w = 2 * BOARD_MARGIN + WIDTH * BLOCK_SIZE;
+    borderRect.h = 2 * BOARD_MARGIN + HEIGHT * BLOCK_SIZE;
+    x += BOARD_MARGIN;
+    y += BOARD_MARGIN;
+    insideRect.x = x;
+    insideRect.y = y;
+    insideRect.w = WIDTH * BLOCK_SIZE;
+    insideRect.h = HEIGHT * BLOCK_SIZE;
+    Uint8 r = 12;
+    Uint8 g = 7;
+    Uint8 b = 18;
+    SDL_SetRenderDrawColor(renderer, r, g, b, 255);
+    SDL_RenderFillRect(renderer, &borderRect);
+    SDL_SetRenderDrawColor(renderer, r + 10, g + 10, b + 10, 255);
+    SDL_RenderFillRect(renderer, &insideRect);
     for (int boardY = 0; boardY < HEIGHT; boardY++)
     {
         for (int boardX = 0; boardX < WIDTH; boardX++)

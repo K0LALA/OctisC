@@ -42,7 +42,7 @@ void startGame();
 
 void createBoard(int board[][WIDTH], const int width, const int height, const int baseValue);
 void pickBlocks(BLOCK *blocks, int blockCount);
-BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount);
+BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool firstPlayerToPlay);
 
 int readIntFromUser(const char *prompt, int minimum, int maximum);
 

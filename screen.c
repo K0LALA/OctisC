@@ -41,7 +41,7 @@ void init()
         exit(EXIT_FAILURE);
     }
 
-    if (SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN, &window, &renderer) != 0)
+    if (SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_MAXIMIZED, &window, &renderer) != 0)
     {
         printf("SDL_CreateWindowAndRenderer Error: %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
@@ -103,18 +103,23 @@ void renderPresentFromTexture()
     SDL_RenderPresent(renderer);
 }
 
+/// @brief Renders everything on the screen, SDL_RenderPresent() is ran at the end
 void renderScreen(int board[][WIDTH], BLOCK *firstBlocks, int firstBlocksAmount, BLOCK *secondBlocks, int secondBlocksAmount, bool firstPlayerToPlay)
 {
+    // Clear the screen
     // Set render target to a texture
     if (SDL_SetRenderTarget(renderer, mainTexture) < 0)
     {
         printf("SDL_SetRenderTarget Error: %s\n", SDL_GetError());
         return;
     }
+    // Clear the screen
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
     // Apply all changes
-    renderBoard(board, (SCREEN_WIDTH - WIDTH * BLOCK_SIZE) / 2, 100);
-    renderBlocks(firstBlocks, firstBlocksAmount, 100, 30);
-    renderBlocks(secondBlocks, secondBlocksAmount, SCREEN_WIDTH - BLOCKS_WIDTH - 100, 30);
+    renderBoard(board, BOARD_X, BOARD_Y);
+    renderBlocks(firstBlocks, firstBlocksAmount, BLOCKS_X, BLOCKS_Y);
+    renderBlocks(secondBlocks, secondBlocksAmount, SCREEN_WIDTH - BLOCKS_WIDTH - BLOCKS_X, BLOCKS_Y);
     char playerText[19];
     sprintf(playerText, "Player %d to play!", !firstPlayerToPlay + 1);
     renderText(playerText, foregroundColor, -1, 950, 32);
@@ -251,15 +256,12 @@ void renderBoard(int board[][WIDTH], int x, int y)
             if (board[boardY][boardX] != OFF_VALUE)
             {
                 renderCell(COLORS[board[boardY][boardX] - 30], x + boardX * BLOCK_SIZE, y + boardY * BLOCK_SIZE);
-            }/*
-            else {
-                renderCell(COLORS[0], x + boardX * BLOCK_SIZE, y + boardY * BLOCK_SIZE);
-            }*/
+            }
         }
     }
 }
 
-void renderBlocks(BLOCK* blocks, int blocksAmount, int x, int y)
+void renderBlocksSelection(BLOCK* blocks, int blocksAmount, int blockIndex, int x, int y)
 {
     // These rectangles also clear the area
     SDL_Rect borderRect, insideRect;
@@ -290,7 +292,22 @@ void renderBlocks(BLOCK* blocks, int blocksAmount, int x, int y)
     for (int i = 0; i < blocksAmount; i++)
     {
         int offsetX = (BLOCKS_WIDTH - BLOCK_SIZE * blocks[i].width) / 2;
-        renderBlock(blocks[i], COLORS[blocks[i].color - 30], x + offsetX, y + offsetY);
+        SDL_Color blockColor = COLORS[blocks[i].color - 30];
+        if (i != blockIndex)
+        {
+            int gray = blockColor.r + blockColor.g + blockColor.b;
+            gray /= 3;
+            blockColor.r = gray;
+            blockColor.g = gray;
+            blockColor.b = gray;
+            blockColor.a /= 2;
+        }
+        renderBlock(blocks[i], blockColor, x + offsetX, y + offsetY);
         offsetY += verticalSpacing + blocks[i].height * BLOCK_SIZE;
     }
+}
+
+void renderBlocks(BLOCK* blocks, int blocksAmount, int x, int y)
+{
+    renderBlocksSelection(blocks, blocksAmount, -1, x, y);
 }

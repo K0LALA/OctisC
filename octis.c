@@ -181,7 +181,6 @@ int main(int argc, char **argv)
 
 void startGame()
 {
-    puts("Game started!\n");
     bool firstPlayerToPlay = false;
     BLOCK *firstPlayerBlocks = (BLOCK *)malloc(sizeof(BLOCK) * MAX_BLOCK_COUNT);
     if (firstPlayerBlocks == NULL)
@@ -203,10 +202,9 @@ void startGame()
     int board[HEIGHT][WIDTH];
     createBoard(board, WIDTH, HEIGHT, OFF_VALUE);
 
-    /*do
+    do
     {
         firstPlayerToPlay = !firstPlayerToPlay;
-        printf("Player %d to play!\n", !firstPlayerToPlay + 1);
 
         // Check if block list is empty for both players
         if (firstPlayerBlocksAmount <= 0)
@@ -236,11 +234,12 @@ void startGame()
             secondPlayerBlocksAmount = MAX_BLOCK_COUNT;
         }
 
+        renderScreen(board, firstPlayerBlocks, firstPlayerBlocksAmount, secondPlayerBlocks, secondPlayerBlocksAmount, firstPlayerToPlay);
         if (firstPlayerToPlay)
-            firstPlayerBlocks = turn(board, firstPlayerBlocks, &firstPlayerBlocksAmount);
+            firstPlayerBlocks = turn(board, firstPlayerBlocks, &firstPlayerBlocksAmount, firstPlayerToPlay);
         else
-            secondPlayerBlocks = turn(board, secondPlayerBlocks, &secondPlayerBlocksAmount);
-    } while (firstPlayerBlocks != NULL && secondPlayerBlocks != NULL);*/
+            secondPlayerBlocks = turn(board, secondPlayerBlocks, &secondPlayerBlocksAmount, firstPlayerToPlay);
+    } while (firstPlayerBlocks != NULL && secondPlayerBlocks != NULL);
 
     printf("\nPlayer %d lost!\n", !firstPlayerToPlay + 1);
 
@@ -290,68 +289,74 @@ void pickBlocks(BLOCK *blocks, int blockCount)
 /// @brief Gets the input from the player to get his moves
 /// @param board The current board
 /// @param playerBlocks The player's blocks
+/// @param firstPlayerToPlay Whose turn is it
 /// @return NULL if the player lost, a list of the still available blocks otherwise
-BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount)
+BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool firstPlayerToPlay)
 {
-    // Print the available blocks
-    printBlocks(playerBlocks, *blocksAmount);
-
     // Get the chosen block from the player
-    char *prompt = (char *)malloc(sizeof(char) * (26 + (int)(*blocksAmount / 10)));
-    sprintf(prompt, "Choose your block [1-%d]: ", *blocksAmount);
-    int blockIndex = readIntFromUser(prompt, 1, *blocksAmount);
-    BLOCK block = playerBlocks[blockIndex - 1];
-
-    // Print the chosen block above the board
-    BLOCK *showedBlocks = (BLOCK *)malloc(sizeof(BLOCK) * 4);
-    showedBlocks[0] = block;
-    unsigned short rotatedBlocksCount = 1;
-    for (int i = 0; i < 3; i++)
+    int blockIndex = 0;
+    bool isBlockSelected = false;
+    bool didSelectedBlockChanged = true;
+    while (!isBlockSelected)
     {
-        BLOCK *rotatedBlock = (BLOCK *)malloc(sizeof(BLOCK));
-        copyBlock(rotatedBlock, &showedBlocks[rotatedBlocksCount - 1]);
-        rotate(rotatedBlock);
-        if (compareBlock(rotatedBlock, &block))
+        if (didSelectedBlockChanged)
         {
-            free(rotatedBlock);
-            if (i == 0)
+            // Display the blocks with only the selected one colored
+            renderOnMainTexture();
+            renderBlocksSelection(playerBlocks, *blocksAmount, blockIndex, firstPlayerToPlay ? BLOCKS_X : SCREEN_WIDTH - BLOCKS_WIDTH - BLOCKS_X, BLOCKS_Y);
+            renderPresentFromTexture();
+            didSelectedBlockChanged = false;
+        }
+        while (SDL_PollEvent(&event))
+        {
+            switch (event.type)
             {
+            case SDL_KEYDOWN:
+                keypressed = event.key.keysym.sym;
+                switch(keypressed)
+                {
+                case QUIT_KEY:
+                    // TODO: Handle this better since NULL already means LOSS
+                    finish();
+                    return NULL;
+                    break;
+
+                case SDLK_RETURN:
+                case SDLK_RETURN2:
+                    isBlockSelected = true;
+                    break;
+
+                case SDLK_LEFT:
+                case SDLK_UP:
+                    blockIndex--;
+                    if (blockIndex < 0) blockIndex = *blocksAmount - 1;
+                    didSelectedBlockChanged = true;
+                    break;
+
+                case SDLK_RIGHT:
+                case SDLK_DOWN:
+                    blockIndex++;
+                    if (blockIndex >= *blocksAmount) blockIndex = 0;
+                    didSelectedBlockChanged = true;
+                    break;
+                }
+                break;
+            
+            case SDL_QUIT:
+                finish();
+                return NULL;
                 break;
             }
-            continue;
         }
-        rotatedBlocksCount++;
-        showedBlocks[rotatedBlocksCount - 1] = *rotatedBlock;
-        free(rotatedBlock);
     }
+    BLOCK block = playerBlocks[blockIndex];
 
-    // Get the chosen orientation from the player
-    if (rotatedBlocksCount > 1)
-    {
-        printBlocks(showedBlocks, rotatedBlocksCount);
-        free(prompt);
-        prompt = (char *)malloc(sizeof(char) * 36);
-        sprintf(prompt, "Choose your orientation [1-%d]: ", rotatedBlocksCount);
-        int chosenRotation = readIntFromUser(prompt, 1, rotatedBlocksCount);
-        block = showedBlocks[chosenRotation - 1];
-    }
-    free(showedBlocks);
-
-    // Print the rotated block above the board
-    int middleX = WIDTH - block.width;
-    printBlockOffset(block, middleX);
-    printBoard(board);
-
-    // Get the chosen abscissa
-    int maxX = WIDTH - block.width + 1;
-    free(prompt);
-    prompt = (char *)malloc(sizeof(char) * (29 + (int)(maxX / 10)));
-    sprintf(prompt, "Choose your abscissa [1-%d]: ", maxX);
-    int chosenX = readIntFromUser(prompt, 1, maxX);
-    free(prompt);
+    int middleX = (WIDTH - block.width) / 2;
+    //int maxX = WIDTH - block.width;
+    addBlock(board, &block, middleX, 0);
 
     // Place the block in the board
-    if (!fall(board, &block, chosenX - 1))
+    /*if (!fall(board, &block, middleX - 1))
     {
         free(playerBlocks);
         return NULL;
@@ -361,7 +366,7 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount)
     removeCompletedLines(board);
 
     // Print the board
-    printBoard(board);
+    printBoard(board);*/
 
     // Remove the block from the list
     (*blocksAmount)--;
@@ -369,7 +374,7 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount)
     int count = 0;
     for (int i = 0; i < (*blocksAmount) + 1; i++)
     {
-        if (i != blockIndex - 1)
+        if (i != blockIndex)
         {
             newBlocks[count++] = playerBlocks[i];
         }
@@ -378,27 +383,6 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount)
     free(playerBlocks);
 
     return newBlocks;
-}
-
-int readIntFromUser(const char *prompt, int minimum, int maximum)
-{
-    int readedValue;
-    do
-    {
-        fputs(prompt, stdout);
-
-        // Read from the user
-        char buffer[1024];
-        if (fgets(buffer, sizeof(buffer), stdin) == NULL)
-        {
-            puts("Failed to read from the user.");
-            exit(EXIT_FAILURE);
-        }
-
-        // Convert char* to int
-        readedValue = strtol(buffer, NULL, 10);
-    } while (!(readedValue >= minimum && readedValue <= maximum));
-    return readedValue;
 }
 
 void rotate(BLOCK *block)
@@ -591,93 +575,7 @@ void removeCompletedLines(int board[][WIDTH])
     }
 }
 
-void printBlocks(BLOCK *blocks, int blocksAmount)
-{
-    char spacing[6] = "     ";
-    for (int y = 0; y < MAX_BLOCK_SIZE; y++)
-    {
-        for (int i = 0; i < blocksAmount; i++)
-        {
-            for (int x = 0; x < blocks[i].width; x++)
-            {
-                if (y < blocks[i].height && blocks[i].block[y][x])
-                {
-                    printColored(blocks[i].color, "■ ");
-                }
-                else
-                {
-                    printf("  ");
-                }
-            }
-            if (i != blocksAmount - 1)
-            {
-                printf("%s ", spacing);
-            }
-        }
-        printf("\n");
-    }
-}
-
-void printBlock(BLOCK block)
-{
-    printBlockOffset(block, 0);
-}
-
-void printBlockOffset(BLOCK block, int offset)
-{
-    for (int y = 0; y < block.height; y++)
-    {
-        for (int i = 0; i < offset; i++)
-        {
-            printf(" ");
-        }
-        for (int x = 0; x < block.width; x++)
-        {
-            if (block.block[y][x])
-            {
-                printColored(block.color, "■ ");
-            }
-            else
-            {
-                printf("  ");
-            }
-        }
-        printf("\n");
-    }
-}
-
-char *multiplyChar(char character, int amount)
-{
-    char *multipliedChar = (char *)malloc(sizeof(char) * (amount + 1));
-    for (int i = 0; i < amount; i++)
-    {
-        multipliedChar[i] = character;
-    }
-    return multipliedChar;
-}
-
 void printColored(int color, const char *text)
 {
     printf("\033[%dm%s\033[0m", color, text);
-}
-
-void printBoard(int board[][WIDTH])
-{
-    for (int y = 0; y < HEIGHT; y++)
-    {
-        for (int x = 0; x < WIDTH; x++)
-        {
-            if (*(*(board + y) + x) != OFF_VALUE)
-                printColored(*(*(board + y) + x), "■ ");
-            else
-                printf("  ");
-        }
-        printf("%d\n", HEIGHT - y);
-    }
-
-    for (int x = 1; x <= WIDTH; x++)
-    {
-        printf("%d ", x);
-    }
-    printf("\n");
 }

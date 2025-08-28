@@ -10,6 +10,10 @@ SDL_Window *window = NULL;
 SDL_Renderer *renderer;
 SDL_Color foregroundColor = {255, 255, 255, 255};
 
+// This texture is used as an intermediate to render the screen
+// It's possible to change only portions of it so a render of everything isn't necessary
+SDL_Texture *mainTexture;
+
 // Follows the same order as ANSI escape codes for colors (30-37):
 static const SDL_Color COLORS[] = {
     {134, 134, 141, 255},   // Black
@@ -48,6 +52,13 @@ void init()
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
+
+    mainTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH, SCREEN_HEIGHT);
+    if (!mainTexture)
+    {
+        printf("SDL_CreateTexture Error: %s\n", SDL_GetError());
+        return;
+    }
 }
 
 void finish()
@@ -69,15 +80,54 @@ void clearScreen()
     SDL_RenderPresent(renderer);
 }
 
+void renderOnMainTexture()
+{
+    if (SDL_SetRenderTarget(renderer, mainTexture) < 0)
+    {
+        printf("SDL_SetRenderTarget Error: %s\n", SDL_GetError());
+    }
+}
+
+void renderPresentFromTexture()
+{
+    // Set render target to screen
+    if (SDL_SetRenderTarget(renderer, NULL) < 0)
+    {
+        printf("SDL_SetRenderTarget2 Error: %s\n", SDL_GetError());
+        return;
+    }
+    // Render copy from texture to screen
+    SDL_RenderCopy(renderer, mainTexture, NULL, NULL);
+    
+    // Render present
+    SDL_RenderPresent(renderer);
+}
+
 void renderScreen(int board[][WIDTH], BLOCK *firstBlocks, int firstBlocksAmount, BLOCK *secondBlocks, int secondBlocksAmount, bool firstPlayerToPlay)
 {
+    // Set render target to a texture
+    if (SDL_SetRenderTarget(renderer, mainTexture) < 0)
+    {
+        printf("SDL_SetRenderTarget Error: %s\n", SDL_GetError());
+        return;
+    }
+    // Apply all changes
     renderBoard(board, (SCREEN_WIDTH - WIDTH * BLOCK_SIZE) / 2, 100);
-    renderBlocks(firstBlocks, firstBlocksAmount, 100, 50);
-    renderBlocks(secondBlocks, secondBlocksAmount, SCREEN_WIDTH - BLOCKS_WIDTH - 100, 50);
+    renderBlocks(firstBlocks, firstBlocksAmount, 100, 30);
+    renderBlocks(secondBlocks, secondBlocksAmount, SCREEN_WIDTH - BLOCKS_WIDTH - 100, 30);
     char playerText[19];
     sprintf(playerText, "Player %d to play!", !firstPlayerToPlay + 1);
     renderText(playerText, foregroundColor, -1, 950, 32);
-
+    // Set render target to screen
+    if (SDL_SetRenderTarget(renderer, NULL) < 0)
+    {
+        printf("SDL_SetRenderTarget2 Error: %s\n", SDL_GetError());
+        return;
+    }
+    // Render copy from texture to screen
+    SDL_RenderCopy(renderer, mainTexture, NULL, NULL);
+    
+    // Render present
     SDL_RenderPresent(renderer);
 }
 
@@ -137,7 +187,7 @@ int renderText(const char *text, SDL_Color color, int x, int y, int fontSize)
     return 0;
 }
 
-static void renderCell(SDL_Color color, int x, int y)
+static void renderCell(SDL_Color color, const int x, const int y)
 {
     SDL_Rect borderRect, insideRect;
     borderRect.x = x;
@@ -160,7 +210,7 @@ static void renderCell(SDL_Color color, int x, int y)
     SDL_RenderFillRect(renderer, &insideRect);
 }
 
-static void renderBlock(BLOCK block, SDL_Color color, int x, int y)
+static void renderBlock(BLOCK block, SDL_Color color, const int x, const int y)
 {
     for (int blockY = 0; blockY < block.height; blockY++)
     {
@@ -179,10 +229,10 @@ void renderBoard(int board[][WIDTH], int x, int y)
     SDL_Rect borderRect, insideRect;
     borderRect.x = x;
     borderRect.y = y;
-    borderRect.w = 2 * BOARD_MARGIN + WIDTH * BLOCK_SIZE;
-    borderRect.h = 2 * BOARD_MARGIN + HEIGHT * BLOCK_SIZE;
-    x += BOARD_MARGIN;
-    y += BOARD_MARGIN;
+    borderRect.w = 2 * BORDER_SIZE + WIDTH * BLOCK_SIZE;
+    borderRect.h = 2 * BORDER_SIZE + HEIGHT * BLOCK_SIZE;
+    x += BORDER_SIZE;
+    y += BORDER_SIZE;
     insideRect.x = x;
     insideRect.y = y;
     insideRect.w = WIDTH * BLOCK_SIZE;
@@ -211,10 +261,36 @@ void renderBoard(int board[][WIDTH], int x, int y)
 
 void renderBlocks(BLOCK* blocks, int blocksAmount, int x, int y)
 {
-    int offsetY = 0;
+    // These rectangles also clear the area
+    SDL_Rect borderRect, insideRect;
+    borderRect.x = x;
+    borderRect.y = y;
+    borderRect.w = 2 * BORDER_SIZE + BLOCKS_WIDTH;
+    borderRect.h = 2 * BORDER_SIZE + BLOCKS_HEIGHT;
+    x += BORDER_SIZE;
+    y += BORDER_SIZE;
+    insideRect.x = x;
+    insideRect.y = y;
+    insideRect.w = BLOCKS_WIDTH;
+    insideRect.h = BLOCKS_HEIGHT;
+    Uint8 r = 12;
+    Uint8 g = 7;
+    Uint8 b = 18;
+    SDL_SetRenderDrawColor(renderer, r, g, b, 255);
+    SDL_RenderFillRect(renderer, &borderRect);
+    SDL_SetRenderDrawColor(renderer, r + 10, g + 10, b + 10, 255);
+    SDL_RenderFillRect(renderer, &insideRect);
+    int verticalSpacing = BLOCKS_HEIGHT;
     for (int i = 0; i < blocksAmount; i++)
     {
-        renderBlock(blocks[i], COLORS[blocks[i].color - 30], x, y + offsetY);
-        offsetY += BLOCKS_MARGIN + BLOCK_SIZE * blocks[i].height;
+        verticalSpacing -= blocks[i].height * BLOCK_SIZE;
+    }
+    verticalSpacing /= blocksAmount + 1;
+    int offsetY = verticalSpacing;
+    for (int i = 0; i < blocksAmount; i++)
+    {
+        int offsetX = (BLOCKS_WIDTH - BLOCK_SIZE * blocks[i].width) / 2;
+        renderBlock(blocks[i], COLORS[blocks[i].color - 30], x + offsetX, y + offsetY);
+        offsetY += verticalSpacing + blocks[i].height * BLOCK_SIZE;
     }
 }

@@ -202,7 +202,6 @@ void startGame()
     pickBlocks(secondPlayerBlocks, MAX_BLOCK_COUNT);
     int board[HEIGHT][WIDTH];
     createBoard(board, WIDTH, HEIGHT, OFF_VALUE);
-    addBlock(board, &firstPlayerBlocks[0], 0, 2);
 
     /*do
     {
@@ -244,8 +243,6 @@ void startGame()
     } while (firstPlayerBlocks != NULL && secondPlayerBlocks != NULL);*/
 
     printf("\nPlayer %d lost!\n", !firstPlayerToPlay + 1);
-    renderScreen(board, firstPlayerBlocks, firstPlayerBlocksAmount, secondPlayerBlocks, secondPlayerBlocksAmount, firstPlayerToPlay);
-    SDL_Delay(10000);
 
     free(firstPlayerBlocks);
     free(secondPlayerBlocks);
@@ -281,14 +278,11 @@ void pickBlocks(BLOCK *blocks, int blockCount)
             blockIndex = BLOCK_COUNT;
         }
         bool doFlip = randomValue % 2 == 0;
-        int rotationCount = randomValue % 3;
         int color = 31 + randomValue % 5;
 
         memcpy(&blocks[i], &BLOCKS[blockIndex - 1], sizeof(BLOCK));
         if (doFlip)
             flip(&blocks[i]);
-        for (int r = 0; r < rotationCount; r++)
-            rotate(&blocks[i]);
         blocks[i].color = color;
     }
 }

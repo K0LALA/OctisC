@@ -5,7 +5,7 @@ This game is based on **Tetris** but this time as a 2-player game where the goal
 This version of the game is written entirely in C and using SDL2 for graphics.<br>
 This same game is also written in [Python](https://github.com/K0LALA/OctisTerminal) but has less features.<br>
 
-<img src="demo.png" alt="Demo">
+<img src="demo.png" alt="Demo"/>
 
 ## Building
 
@@ -19,4 +19,7 @@ With a command that may look like this:<br>
 To work, you'll need `SDL2.dll` and `SDL2_ttf.dll` libraries either in the same folder as .exe or in a folder listed in the PATH.<br>
 You can grab these online or from the <a href="https://github.com/K0LALA/OctisC/releases">Releases page</a>.<br>
 <br>
+
+## License
+
 You are free to use the entirety of the idea and the code as you wish as this was made for eductional purposes.

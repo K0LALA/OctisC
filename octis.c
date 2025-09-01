@@ -387,14 +387,6 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
 
     bool needsRender = true;
     do {
-        // Increment height periodically
-        if ((int) time(NULL) - lastIncrement >= 1)
-        {
-            height++;
-            lastIncrement = time(NULL);
-            needsRender = true;
-        }
-
         while (!fallEnded && SDL_PollEvent(&event))
         {
             switch (event.type)
@@ -445,91 +437,99 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                 return NULL;
                 break;
             }
+        }
 
-            if (needsRender)
+        if (needsRender)
+        {
+            needsRender = false;
+
+            // Check if the move is possible
+            int boardCopy[HEIGHT][WIDTH];
+            copyBoard(boardCopy, board);
+            int addedSquares = 0;
+            if (firstPlace)
             {
-                needsRender = false;
-
-                // Check if the move is possible
-                int boardCopy[HEIGHT][WIDTH];
-                copyBoard(boardCopy, board);
-                int addedSquares = 0;
-                if (firstPlace)
+                BLOCK fullRectangle;
+                copyBlock(&fullRectangle, &tmpBlock);
+                for (int x = 0; x < block.width; x++)
                 {
-                    BLOCK fullRectangle;
-                    copyBlock(&fullRectangle, &tmpBlock);
-                    for (int x = 0; x < block.width; x++)
+                    bool blocksStarted = false;
+                    for (int y = block.height - 1; y >= 0; y--)
                     {
-                        bool blocksStarted = false;
-                        for (int y = block.height - 1; y >= 0; y--)
+                        if (!blocksStarted && fullRectangle.block[y][x])
                         {
-                            if (!blocksStarted && fullRectangle.block[y][x])
-                            {
-                                blocksStarted = true;
-                            }
-                            if (blocksStarted && !fullRectangle.block[y][x])
-                            {
-                                fullRectangle.block[y][x] = true;
-                                addedSquares++;
-                            }
+                            blocksStarted = true;
+                        }
+                        if (blocksStarted && !fullRectangle.block[y][x])
+                        {
+                            fullRectangle.block[y][x] = true;
+                            addedSquares++;
                         }
                     }
-                    addBlock(boardCopy, &fullRectangle, targetX, height);
                 }
-                else {
-                    addBlock(boardCopy, &tmpBlock, targetX, height);
-                }
-                expectedSquares += addedSquares;
-                // Illegal move
-                if (expectedSquares != countBoardSquares(boardCopy, OFF_VALUE))
+                addBlock(boardCopy, &fullRectangle, targetX, height);
+            }
+            else {
+                addBlock(boardCopy, &tmpBlock, targetX, height);
+            }
+            expectedSquares += addedSquares;
+            // Illegal move
+            if (expectedSquares != countBoardSquares(boardCopy, OFF_VALUE))
+            {
+                // First placement failed
+                if (firstPlace)
                 {
-                    // First placement failed
-                    if (firstPlace)
-                    {
-                        renderOnMainTexture();
-                        renderBoard(boardCopy, BOARD_X, BOARD_Y);
-                        renderPresentFromTexture();
-                        return NULL;
-                    }
-                    // Sideway move failed
-                    if (targetX != currentX)
-                    {
-                        targetX = currentX;
-                    }
-                    // Rotation failed
-                    else if (!compareBlock(&tmpBlock, &block))
-                    {
-                        copyBlock(&tmpBlock, &block);
-                        maxHeight = HEIGHT - block.height;
-                    }
-                    // Reached block at the bottom
-                    else {
-                        fallEnded = true;
-                        break;
-                    }
-                } else {
-                    // Legal move
-                    if (firstPlace)
-                    {
-                        // Render using the original block, not the rectangle
-                        copyBoard(boardCopy, board);
-                        addBlock(boardCopy, &block, currentX, height);
-                        firstPlace = false;
-                    }
-
-                    currentX = targetX;
-                    copyBlock(&block, &tmpBlock);
-                    
-                    // Render the board
                     renderOnMainTexture();
                     renderBoard(boardCopy, BOARD_X, BOARD_Y);
                     renderPresentFromTexture();
-
-                    // Reset the timer for height increments to avoid strange results
-                    //lastIncrement = (int) time(NULL);
+                    return NULL;
                 }
-                expectedSquares -= addedSquares;                
+                // Sideway move failed
+                if (targetX != currentX)
+                {
+                    targetX = currentX;
+                }
+                // Rotation failed
+                else if (!compareBlock(&tmpBlock, &block))
+                {
+                    copyBlock(&tmpBlock, &block);
+                    maxHeight = HEIGHT - block.height;
+                }
+                // Reached block at the bottom
+                else {
+                    fallEnded = true;
+                    break;
+                }
+            } else {
+                // Legal move
+                if (firstPlace)
+                {
+                    // Render using the original block, not the rectangle
+                    copyBoard(boardCopy, board);
+                    addBlock(boardCopy, &block, currentX, height);
+                    firstPlace = false;
+                }
+
+                currentX = targetX;
+                copyBlock(&block, &tmpBlock);
+                
+                // Render the board
+                renderOnMainTexture();
+                renderBoard(boardCopy, BOARD_X, BOARD_Y);
+                renderPresentFromTexture();
+
+                // Reset the timer for height increments to avoid strange results
+                lastIncrement = (int) time(NULL);
             }
+            expectedSquares -= addedSquares;                
+        }
+
+        // Increment height periodically
+        if ((int) time(NULL) - lastIncrement >= 1)
+        {
+            height++;
+            lastIncrement = (int) time(NULL);
+            needsRender = true;
         }
     } while (height <= maxHeight && !fallEnded);
     addBlock(board, &block, currentX, height - 1);

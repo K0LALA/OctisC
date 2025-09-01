@@ -414,15 +414,14 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
 
                 case SDLK_UP:
                     maxHeight = HEIGHT - block.width;
-                    if (height > maxHeight)
+                    maxX = WIDTH - block.height;
+                    if (height > maxHeight || currentX > maxX)
                     {
                         maxHeight = HEIGHT - block.height;
+                        maxX = WIDTH - block.width;
                         break;
                     }
                     rotate(&tmpBlock);
-                    maxX = WIDTH - tmpBlock.width;
-                    if (currentX > maxX) currentX = maxX;
-                    targetX = currentX;
                     needsRender = true;
                     break;
 

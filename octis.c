@@ -396,6 +396,7 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                 switch(keypressed)
                 {
                 case QUIT_KEY:
+                    free(newBlocks);
                     return NULL;
                     break;
 
@@ -434,6 +435,7 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                 break;
 
             case SDL_QUIT:
+                free(newBlocks);
                 return NULL;
                 break;
             }
@@ -482,6 +484,7 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                     renderOnMainTexture();
                     renderBoard(boardCopy, BOARD_X, BOARD_Y);
                     renderPresentFromTexture();
+                    free(newBlocks);
                     return NULL;
                 }
                 // Sideway move failed

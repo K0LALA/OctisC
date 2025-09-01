@@ -63,9 +63,11 @@ void init()
 
 void finish()
 {
-    TTF_Quit();
+    SDL_DestroyTexture(mainTexture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
+    
+    TTF_Quit();
     SDL_Quit();
 }
 
@@ -187,6 +189,8 @@ int renderText(const char *text, SDL_Color color, int x, int y, int fontSize)
         return 1;
     }
 
+    SDL_DestroyTexture(textTexture);
+    SDL_FreeSurface(textSurface);
     TTF_CloseFont(font);
 
     return 0;

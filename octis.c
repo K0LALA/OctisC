@@ -134,15 +134,16 @@ int main(int argc, char **argv)
     printf("|     |___| |_|_|___ \n");
     printf("|  |  |  _|  _| |_ -|\n");
     printf("|_____|___|_| |_|___|\n");
-
+    
     srand((int)time(NULL));
     init();
-
+    
     renderText("Octis", pureWhite, -1, 25, 64);
     renderText("This game is a 2-player Tetris game.", pureWhite, -1, 350, 32);
     renderText("To win, make the opponent place a block above the limit!", pureWhite, -1, 400, 32);
     renderText("Press any key to start.", pureWhite, -1, 850, 48);
     updateScreen();
+
     // Wait for ENTER
     bool gameStarted = false;
     while (!gameStarted)
@@ -174,6 +175,9 @@ int main(int argc, char **argv)
     }
     clearScreen();
     startGame();
+
+    SDL_Delay(1000);
+
     finish();
 
     return EXIT_SUCCESS;
@@ -286,7 +290,7 @@ void pickBlocks(BLOCK *blocks, int blockCount)
     }
 }
 
-/// @brief Gets the input from the player to get his moves
+/// @brief Make the player play his turn
 /// @param board The current board
 /// @param playerBlocks The player's blocks
 /// @param firstPlayerToPlay Whose turn is it
@@ -317,7 +321,6 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                 {
                 case QUIT_KEY:
                     // TODO: Handle this better since NULL already means LOSS
-                    finish();
                     return NULL;
                     break;
 
@@ -343,30 +346,14 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                 break;
             
             case SDL_QUIT:
-                finish();
                 return NULL;
                 break;
             }
         }
     }
     BLOCK block = playerBlocks[blockIndex];
-
-    int middleX = (WIDTH - block.width) / 2;
-    //int maxX = WIDTH - block.width;
-    addBlock(board, &block, middleX, 0);
-
-    // Place the block in the board
-    /*if (!fall(board, &block, middleX - 1))
-    {
-        free(playerBlocks);
-        return NULL;
-    }
-
-    // Remove completed lines
-    removeCompletedLines(board);
-
-    // Print the board
-    printBoard(board);*/
+    BLOCK tmpBlock;
+    copyBlock(&tmpBlock, &block);
 
     // Remove the block from the list
     (*blocksAmount)--;
@@ -381,6 +368,174 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
     }
 
     free(playerBlocks);
+
+    renderOnMainTexture();
+    renderBlocks(newBlocks, *blocksAmount, firstPlayerToPlay ? BLOCKS_X : SCREEN_WIDTH - BLOCKS_WIDTH - BLOCKS_X, BLOCKS_Y);
+    renderPresentFromTexture();
+
+    int currentX = (WIDTH - block.width) / 2;
+    int targetX = currentX;
+    int maxX = WIDTH - block.width;
+
+    int expectedSquares = block.count + countBoardSquares(board, OFF_VALUE);
+    int height = 0;
+    bool fallEnded = false;
+    bool firstPlace = true;
+    int maxHeight = HEIGHT - block.height;
+
+    int lastIncrement = (int) time(NULL);
+
+    bool needsRender = true;
+    do {
+        // Increment height periodically
+        if ((int) time(NULL) - lastIncrement >= 1)
+        {
+            height++;
+            lastIncrement = time(NULL);
+            needsRender = true;
+        }
+
+        while (!fallEnded && SDL_PollEvent(&event))
+        {
+            switch (event.type)
+            {
+            case SDL_KEYDOWN:
+                keypressed = event.key.keysym.sym;
+                switch(keypressed)
+                {
+                case QUIT_KEY:
+                    return NULL;
+                    break;
+
+                case SDLK_LEFT:
+                    targetX--;
+                    if (targetX < 0) targetX = 0;
+                    needsRender = true;
+                    break;
+
+                case SDLK_RIGHT:
+                    targetX++;
+                    if (targetX > maxX) targetX = maxX;
+                    needsRender = true;
+                    break;
+
+                case SDLK_UP:
+                    maxHeight = HEIGHT - block.width;
+                    if (height > maxHeight)
+                    {
+                        maxHeight = HEIGHT - block.height;
+                        break;
+                    }
+                    rotate(&tmpBlock);
+                    maxX = WIDTH - tmpBlock.width;
+                    if (currentX > maxX) currentX = maxX;
+                    targetX = currentX;
+                    needsRender = true;
+                    break;
+
+                case SDLK_DOWN:
+                    height++;
+                    if (height > maxHeight) continue;
+                    needsRender = true;
+                    break;
+                }
+                break;
+
+            case SDL_QUIT:
+                return NULL;
+                break;
+            }
+
+            if (needsRender)
+            {
+                needsRender = false;
+
+                // Check if the move is possible
+                int boardCopy[HEIGHT][WIDTH];
+                copyBoard(boardCopy, board);
+                int addedSquares = 0;
+                if (firstPlace)
+                {
+                    BLOCK fullRectangle;
+                    copyBlock(&fullRectangle, &tmpBlock);
+                    for (int x = 0; x < block.width; x++)
+                    {
+                        bool blocksStarted = false;
+                        for (int y = block.height - 1; y >= 0; y--)
+                        {
+                            if (!blocksStarted && fullRectangle.block[y][x])
+                            {
+                                blocksStarted = true;
+                            }
+                            if (blocksStarted && !fullRectangle.block[y][x])
+                            {
+                                fullRectangle.block[y][x] = true;
+                                addedSquares++;
+                            }
+                        }
+                    }
+                    addBlock(boardCopy, &fullRectangle, targetX, height);
+                }
+                else {
+                    addBlock(boardCopy, &tmpBlock, targetX, height);
+                }
+                expectedSquares += addedSquares;
+                // Illegal move
+                if (expectedSquares != countBoardSquares(boardCopy, OFF_VALUE))
+                {
+                    // First placement failed
+                    if (firstPlace)
+                    {
+                        renderOnMainTexture();
+                        renderBoard(boardCopy, BOARD_X, BOARD_Y);
+                        renderPresentFromTexture();
+                        return NULL;
+                    }
+                    // Sideway move failed
+                    if (targetX != currentX)
+                    {
+                        targetX = currentX;
+                    }
+                    // Rotation failed
+                    else if (!compareBlock(&tmpBlock, &block))
+                    {
+                        copyBlock(&tmpBlock, &block);
+                        maxHeight = HEIGHT - block.height;
+                    }
+                    // Reached block at the bottom
+                    else {
+                        fallEnded = true;
+                        break;
+                    }
+                } else {
+                    // Legal move
+                    if (firstPlace)
+                    {
+                        // Render using the original block, not the rectangle
+                        copyBoard(boardCopy, board);
+                        addBlock(boardCopy, &block, currentX, height);
+                        firstPlace = false;
+                    }
+
+                    currentX = targetX;
+                    copyBlock(&block, &tmpBlock);
+                    
+                    // Render the board
+                    renderOnMainTexture();
+                    renderBoard(boardCopy, BOARD_X, BOARD_Y);
+                    renderPresentFromTexture();
+
+                    // Reset the timer for height increments to avoid strange results
+                    //lastIncrement = (int) time(NULL);
+                }
+                expectedSquares -= addedSquares;                
+            }
+        }
+    } while (height <= maxHeight && !fallEnded);
+    addBlock(board, &block, currentX, height - 1);
+
+    // Remove completed lines
+    removeCompletedLines(board);
 
     return newBlocks;
 }
@@ -422,6 +577,10 @@ void flip(BLOCK *block)
     }
 }
 
+/// @brief Compares data of blockA and blockB
+/// @param blockA a block
+/// @param blockB a second block
+/// @return true if blockA and blockB are the same, false otherwise
 bool compareBlock(BLOCK *blockA, BLOCK *blockB)
 {
     for (int y = 0; y < MAX_BLOCK_SIZE; y++)
@@ -435,6 +594,9 @@ bool compareBlock(BLOCK *blockA, BLOCK *blockB)
     return true;
 }
 
+/// @brief Copies blockB data in blockA data
+/// @param blockA destination
+/// @param blockB source
 void copyBlock(BLOCK *blockA, BLOCK *blockB)
 {
     for (int y = 0; y < MAX_BLOCK_SIZE; y++)
@@ -452,6 +614,9 @@ void copyBlock(BLOCK *blockA, BLOCK *blockB)
     // blockA->chance = blockB->chance;
 }
 
+/// @brief Copies boardB data in boardA data
+/// @param boardA destination
+/// @param boardB source
 void copyBoard(int boardA[][WIDTH], int boardB[][WIDTH])
 {
     for (int y = 0; y < HEIGHT; y++)
@@ -483,62 +648,12 @@ void addBlock(int board[][WIDTH], BLOCK *block, int X, int Y)
     {
         for (int x = 0; x < block->width; x++)
         {
-            if (block->block[y][x])
+            if (y + Y <= HEIGHT && x + X <= WIDTH && block->block[y][x])
             {
                 *(*(board + y + Y) + x + X) = block->color;
             }
         }
     }
-}
-
-bool fall(int board[][WIDTH], BLOCK *block, int X)
-{
-    int totalSquares = block->count + countBoardSquares(board, OFF_VALUE);
-    int height = 0;
-    while (height + block->height <= HEIGHT)
-    {
-        int boardCopy[HEIGHT][WIDTH];
-        copyBoard(boardCopy, board);
-        // For the first iteration, we consider the block as a full rectangle to avoid clipping
-        int addedSquares = 0;
-        if (height == 0)
-        {
-            BLOCK *fullRectangle = (BLOCK *)malloc(sizeof(BLOCK));
-            copyBlock(fullRectangle, block);
-            for (int x = 0; x < block->width; x++)
-            {
-                bool blocksStarted = false;
-                for (int y = block->height - 1; y >= 0; y--)
-                {
-                    if (!blocksStarted && fullRectangle->block[y][x])
-                    {
-                        blocksStarted = true;
-                    }
-                    if (blocksStarted && !fullRectangle->block[y][x])
-                    {
-                        fullRectangle->block[y][x] = true;
-                        addedSquares++;
-                    }
-                }
-            }
-            addBlock(boardCopy, fullRectangle, X, height);
-            free(fullRectangle);
-        }
-        addBlock(boardCopy, block, X, height);
-        totalSquares += addedSquares;
-        if (totalSquares != countBoardSquares(boardCopy, OFF_VALUE))
-        {
-            if (height - 1 < 0)
-            {
-                return false;
-            }
-            break;
-        }
-        totalSquares -= addedSquares;
-        height++;
-    }
-    addBlock(board, block, X, height - 1);
-    return true;
 }
 
 bool isLineFinished(int *line, int offValue)

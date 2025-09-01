@@ -415,12 +415,20 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                 case SDLK_UP:
                     maxHeight = HEIGHT - block.width;
                     maxX = WIDTH - block.height;
-                    if (height > maxHeight || currentX > maxX)
+                    // To rotate a block around its center point, we need to center the old height in the old width (X) and the old width in the old height ()
+                    // These values an be negative
+                    int centerOffsetX = (block.width - block.height) / 2;
+                    int centerOffsetY = (block.height - block.width) / 2;
+                    // Calculate new x and y if they fit on the board
+                    if (targetX + centerOffsetX > maxX || height + centerOffsetY > maxHeight)
                     {
                         maxHeight = HEIGHT - block.height;
                         maxX = WIDTH - block.width;
                         break;
                     }
+                    targetX += centerOffsetX;
+                    height += centerOffsetY;
+
                     rotate(&tmpBlock);
                     needsRender = true;
                     break;
@@ -480,6 +488,8 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                 // First placement failed
                 if (firstPlace)
                 {
+                    copyBoard(boardCopy, board);
+                    addBlock(boardCopy, &block, currentX, height);
                     renderOnMainTexture();
                     renderBoard(boardCopy, BOARD_X, BOARD_Y);
                     renderPresentFromTexture();

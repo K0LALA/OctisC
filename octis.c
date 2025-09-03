@@ -134,15 +134,10 @@ int main(int argc, char **argv)
     printf("|     |___| |_|_|___ \n");
     printf("|  |  |  _|  _| |_ -|\n");
     printf("|_____|___|_| |_|___|\n");
-    
+
     srand((int)time(NULL));
     init();
-    
-    renderText("Octis", pureWhite, -1, 25, 64);
-    renderText("This game is a 2-player Tetris game.", pureWhite, -1, 350, 32);
-    renderText("To win, make the opponent place a block above the limit!", pureWhite, -1, 400, 32);
-    renderText("Press any key to start.", pureWhite, -1, 850, 48);
-    updateScreen();
+
 
     // Wait for ENTER
     bool gameStarted = false;
@@ -151,32 +146,37 @@ int main(int argc, char **argv)
         // while loop to remove all pending events which could cause issues in the next step
         while (SDL_PollEvent(&event))
         {
+            int r = handleEvents(event);
+            if (r == 1)
+            {
+                finish();
+                return EXIT_SUCCESS;
+            }
+            else if (r == 2)
+            {
+                clearScreen();
+                renderText("Octis", pureWhite, -1, 30, 64);
+                renderText("This game is a 2-player Tetris game.", pureWhite, -1, 350, 32);
+                renderText("To win, make the opponent place a block above the limit!", pureWhite, -1, 400, 32);
+                renderText("Press any key to start.", pureWhite, -1, 690, 48);
+                updateScreen();
+            }
             switch (event.type)
             {
             case SDL_KEYUP:
-                keypressed = event.key.keysym.sym;
-                if (keypressed == QUIT_KEY)
-                {
-                    finish();
-                    return EXIT_SUCCESS;
-                }
                 gameStarted = true;
                 break;
 
             case SDL_MOUSEBUTTONUP:
                 gameStarted = true;
                 break;
-
-            case SDL_QUIT:
-                finish();
-                return EXIT_SUCCESS;
             }
         }
     }
     clearScreen();
     startGame();
 
-    SDL_Delay(1000);
+    SDL_Delay(500);
 
     finish();
 
@@ -205,6 +205,10 @@ void startGame()
     pickBlocks(secondPlayerBlocks, MAX_BLOCK_COUNT);
     int board[HEIGHT][WIDTH];
     createBoard(board, WIDTH, HEIGHT, OFF_VALUE);
+
+    // Send addresses to screen for redraw
+    // This call is only done once since values are linked by addresses
+    updateRedrawPointers(&firstPlayerBlocks, &firstPlayerBlocksAmount, &secondPlayerBlocks, &secondPlayerBlocksAmount, &firstPlayerToPlay);
 
     do
     {
@@ -281,11 +285,14 @@ void pickBlocks(BLOCK *blocks, int blockCount)
             blockIndex = BLOCK_COUNT;
         }
         bool doFlip = randomValue % 2 == 0;
+        int rotationCount = randomValue % 3;
         int color = 31 + randomValue % 5;
 
         memcpy(&blocks[i], &BLOCKS[blockIndex - 1], sizeof(BLOCK));
         if (doFlip)
             flip(&blocks[i]);
+        for (int i = 0; i < rotationCount; i++)
+            rotate(&blocks[i]);
         blocks[i].color = color;
     }
 }
@@ -299,6 +306,7 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
 {
     // Get the chosen block from the player
     int blockIndex = 0;
+    updateRedrawBlockIndex(&blockIndex);
     bool isBlockSelected = false;
     bool didSelectedBlockChanged = true;
     while (!isBlockSelected)
@@ -307,23 +315,28 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
         {
             // Display the blocks with only the selected one colored
             renderOnMainTexture();
-            renderBlocksSelection(playerBlocks, *blocksAmount, blockIndex, firstPlayerToPlay ? BLOCKS_X : SCREEN_WIDTH - BLOCKS_WIDTH - BLOCKS_X, BLOCKS_Y);
+            renderBlocksSelection(playerBlocks, *blocksAmount, blockIndex, firstPlayerToPlay);
             renderPresentFromTexture();
             didSelectedBlockChanged = false;
         }
         while (SDL_PollEvent(&event))
         {
+            int r = handleEvents(event);
+            if (r == 1)
+            {
+                // TODO: Handle this better since NULL already means LOSS
+                return NULL;
+            }
+            else if (r == 2)
+            {
+                redraw(board);
+            }
             switch (event.type)
             {
             case SDL_KEYDOWN:
                 keypressed = event.key.keysym.sym;
-                switch(keypressed)
+                switch (keypressed)
                 {
-                case QUIT_KEY:
-                    // TODO: Handle this better since NULL already means LOSS
-                    return NULL;
-                    break;
-
                 case SDLK_RETURN:
                 case SDLK_RETURN2:
                     isBlockSelected = true;
@@ -332,21 +345,19 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                 case SDLK_LEFT:
                 case SDLK_UP:
                     blockIndex--;
-                    if (blockIndex < 0) blockIndex = *blocksAmount - 1;
+                    if (blockIndex < 0)
+                        blockIndex = *blocksAmount - 1;
                     didSelectedBlockChanged = true;
                     break;
 
                 case SDLK_RIGHT:
                 case SDLK_DOWN:
                     blockIndex++;
-                    if (blockIndex >= *blocksAmount) blockIndex = 0;
+                    if (blockIndex >= *blocksAmount)
+                        blockIndex = 0;
                     didSelectedBlockChanged = true;
                     break;
                 }
-                break;
-            
-            case SDL_QUIT:
-                return NULL;
                 break;
             }
         }
@@ -370,7 +381,7 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
     free(playerBlocks);
 
     renderOnMainTexture();
-    renderBlocks(newBlocks, *blocksAmount, firstPlayerToPlay ? BLOCKS_X : SCREEN_WIDTH - BLOCKS_WIDTH - BLOCKS_X, BLOCKS_Y);
+    renderBlocks(newBlocks, *blocksAmount, firstPlayerToPlay);
     renderPresentFromTexture();
 
     int currentX = (WIDTH - block.width) / 2;
@@ -383,32 +394,42 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
     bool firstPlace = true;
     int maxHeight = HEIGHT - block.height;
 
-    int lastIncrement = (int) time(NULL);
+    int lastIncrement = (int)time(NULL);
 
+    int boardCopy[HEIGHT][WIDTH];
     bool needsRender = true;
-    do {
+    do
+    {
         while (!fallEnded && SDL_PollEvent(&event))
         {
+            int r = handleEvents(event);
+            if (r == 1)
+            {
+                free(newBlocks);
+                return NULL;
+            }
+            else if (r == 2)
+            {
+                redraw(boardCopy);
+                break;
+            }
             switch (event.type)
             {
             case SDL_KEYDOWN:
                 keypressed = event.key.keysym.sym;
-                switch(keypressed)
+                switch (keypressed)
                 {
-                case QUIT_KEY:
-                    free(newBlocks);
-                    return NULL;
-                    break;
-
                 case SDLK_LEFT:
                     targetX--;
-                    if (targetX < 0) targetX = 0;
+                    if (targetX < 0)
+                        targetX = 0;
                     needsRender = true;
                     break;
 
                 case SDLK_RIGHT:
                     targetX++;
-                    if (targetX > maxX) targetX = maxX;
+                    if (targetX > maxX)
+                        targetX = maxX;
                     needsRender = true;
                     break;
 
@@ -416,7 +437,7 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                     maxHeight = HEIGHT - block.width;
                     maxX = WIDTH - block.height;
                     // To rotate a block around its center point, we need to center the old height in the old width (X) and the old width in the old height ()
-                    // These values an be negative
+                    // These values can be negative
                     int centerOffsetX = (block.width - block.height) / 2;
                     int centerOffsetY = (block.height - block.width) / 2;
                     // Calculate new x and y if they fit on the board
@@ -435,15 +456,11 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
 
                 case SDLK_DOWN:
                     height++;
-                    if (height > maxHeight) continue;
+                    if (height > maxHeight)
+                        continue;
                     needsRender = true;
                     break;
                 }
-                break;
-
-            case SDL_QUIT:
-                free(newBlocks);
-                return NULL;
                 break;
             }
         }
@@ -453,7 +470,6 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
             needsRender = false;
 
             // Check if the move is possible
-            int boardCopy[HEIGHT][WIDTH];
             copyBoard(boardCopy, board);
             int addedSquares = 0;
             if (firstPlace)
@@ -478,7 +494,8 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                 }
                 addBlock(boardCopy, &fullRectangle, targetX, height);
             }
-            else {
+            else
+            {
                 addBlock(boardCopy, &tmpBlock, targetX, height);
             }
             expectedSquares += addedSquares;
@@ -491,7 +508,7 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                     copyBoard(boardCopy, board);
                     addBlock(boardCopy, &block, currentX, height);
                     renderOnMainTexture();
-                    renderBoard(boardCopy, BOARD_X, BOARD_Y);
+                    renderBoard(boardCopy);
                     renderPresentFromTexture();
                     free(newBlocks);
                     return NULL;
@@ -508,11 +525,14 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                     maxHeight = HEIGHT - block.height;
                 }
                 // Reached block at the bottom
-                else {
+                else
+                {
                     fallEnded = true;
                     break;
                 }
-            } else {
+            }
+            else
+            {
                 // Legal move
                 if (firstPlace)
                 {
@@ -524,23 +544,23 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
 
                 currentX = targetX;
                 copyBlock(&block, &tmpBlock);
-                
+
                 // Render the board
                 renderOnMainTexture();
-                renderBoard(boardCopy, BOARD_X, BOARD_Y);
+                renderBoard(boardCopy);
                 renderPresentFromTexture();
 
-                // Reset the timer for height increments to avoid strange results
-                lastIncrement = (int) time(NULL);
+                // Reset the timer for height increments to avoid strange moves being too close together
+                lastIncrement = (int)time(NULL);
             }
-            expectedSquares -= addedSquares;                
+            expectedSquares -= addedSquares;
         }
 
         // Increment height periodically
-        if ((int) time(NULL) - lastIncrement >= 1)
+        if ((int)time(NULL) - lastIncrement >= 1)
         {
             height++;
-            lastIncrement = (int) time(NULL);
+            lastIncrement = (int)time(NULL);
             needsRender = true;
         }
     } while (height <= maxHeight && !fallEnded);

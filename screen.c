@@ -10,21 +10,77 @@ SDL_Window *window = NULL;
 SDL_Renderer *renderer;
 SDL_Color foregroundColor = {255, 255, 255, 255};
 
+int SCREEN_WIDTH = 1920;
+int SCREEN_HEIGHT = 1080;
+
+int BLOCK_SIZE;
+int BLOCK_BORDER_SIZE;
+
+int BLOCKS_WIDTH;
+int BLOCKS_HEIGHT;
+
+int BLOCKS_X;
+int BLOCKS_Y;
+
+int BOARD_H;
+int BOARD_BLOCK_SIZE;
+
+int BOARD_X;
+int BOARD_Y;
+
+typedef struct
+{
+    BLOCK **firstPlayerBlocks;
+    int *firstPlayerAmount;
+    BLOCK **secondPlayerBlocks;
+    int *secondPlayerAmount;
+    bool *firstPlayerToPlay;
+    int *blockIndex;
+} REDRAW_POINTERS;
+
+REDRAW_POINTERS redrawPointers;
+
 // This texture is used as an intermediate to render the screen
 // It's possible to change only portions of it so a render of everything isn't necessary
 SDL_Texture *mainTexture;
 
 // Follows the same order as ANSI escape codes for colors (30-37):
-static const SDL_Color COLORS[] = {
-    {134, 134, 141, 255},   // Black
-    {243, 139, 168, 255},   // Red
-    {166, 227, 161, 255},   // Green
-    {249, 226, 175, 255},   // Yellow
-    {137, 180, 250, 255},   // Blue
-    {203, 166, 247, 255},   // Magenta
-    {137, 220, 235, 255},   // Cyan
-    {205, 214, 244, 255}    // White
+static const SDL_Color COLORS[] =
+    {
+        {134, 134, 141, 255}, // Black
+        {243, 139, 168, 255}, // Red
+        {166, 227, 161, 255}, // Green
+        {249, 226, 175, 255}, // Yellow
+        {137, 180, 250, 255}, // Blue
+        {203, 166, 247, 255}, // Magenta
+        {137, 220, 235, 255}, // Cyan
+        {205, 214, 244, 255}  // White
 };
+
+void calculateSizes()
+{
+    if (window != NULL)
+    {
+        SDL_GetWindowSizeInPixels(window, &SCREEN_WIDTH, &SCREEN_HEIGHT);
+    }
+
+    BLOCKS_WIDTH = SCREEN_WIDTH / 5;
+    BLOCKS_HEIGHT = SCREEN_HEIGHT - 60;
+
+    BLOCK_SIZE = (BLOCKS_HEIGHT - BLOCKS_MARGIN) / (MAX_BLOCK_SIZE * MAX_BLOCK_COUNT);
+    BLOCK_BORDER_SIZE = BLOCK_SIZE / 5;
+
+    BLOCKS_X = 50;
+    BLOCKS_Y = 30;
+
+    BOARD_H = SCREEN_HEIGHT - 300;
+    BOARD_BLOCK_SIZE = BOARD_H / HEIGHT;
+
+    BOARD_X = (SCREEN_WIDTH - BOARD_BLOCK_SIZE * WIDTH) / 2;
+    BOARD_Y = 100;
+
+    mainTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH, SCREEN_HEIGHT);
+}
 
 void init()
 {
@@ -41,12 +97,17 @@ void init()
         exit(EXIT_FAILURE);
     }
 
-    if (SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_MAXIMIZED, &window, &renderer) != 0)
+    calculateSizes();
+
+    if (SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_INPUT_FOCUS, &window, &renderer) != 0)
     {
         printf("SDL_CreateWindowAndRenderer Error: %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
     }
 
+    SDL_SetWindowMinimumSize(window, 1024, 768);
+
+    SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_SetWindowTitle(window, "Octis");
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -57,8 +118,19 @@ void init()
     if (!mainTexture)
     {
         printf("SDL_CreateTexture Error: %s\n", SDL_GetError());
-        return;
+        exit(EXIT_FAILURE);
     }
+}
+
+void updateRedrawPointers(BLOCK **p1Blocks, int *p1Amount, BLOCK **p2Blocks, int *p2Amount, bool *p1Play)
+{
+    REDRAW_POINTERS temp = {p1Blocks, p1Amount, p2Blocks, p2Amount, p1Play, NULL};
+    redrawPointers = temp;
+}
+
+void updateRedrawBlockIndex(int *blockIndex)
+{
+    redrawPointers.blockIndex = blockIndex;
 }
 
 void finish()
@@ -66,9 +138,35 @@ void finish()
     SDL_DestroyTexture(mainTexture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
-    
+
     TTF_Quit();
     SDL_Quit();
+}
+
+/// @brief Handles common events
+/// @param event The event after calling SDL_PollEvent()
+/// @return 0 if nothing is to be done, 1 for quit, 2 for redraw
+int handleEvents(SDL_Event event)
+{
+    // Quit signals
+    if (event.type == SDL_QUIT ||
+        (event.type == SDL_KEYDOWN && event.key.keysym.sym == QUIT_KEY))
+    {
+        return 1;
+    }
+    if (event.type == SDL_WINDOWEVENT)
+    {
+        if (event.window.event == SDL_WINDOWEVENT_RESIZED)
+        {
+            calculateSizes();
+            return 2;
+        }
+        if (event.window.event == SDL_WINDOWEVENT_SHOWN)
+        {
+            return 2;
+        }
+    }
+    return 0;
 }
 
 void updateScreen()
@@ -100,9 +198,24 @@ void renderPresentFromTexture()
     }
     // Render copy from texture to screen
     SDL_RenderCopy(renderer, mainTexture, NULL, NULL);
-    
+
     // Render present
     SDL_RenderPresent(renderer);
+}
+
+int getWindowWidth()
+{
+    return SCREEN_WIDTH;
+}
+
+int getWindowHeight()
+{
+    return SCREEN_HEIGHT;
+}
+
+void redraw(int board[][WIDTH])
+{
+    renderScreen(board, *redrawPointers.firstPlayerBlocks, *redrawPointers.firstPlayerAmount, *redrawPointers.secondPlayerBlocks, *redrawPointers.secondPlayerAmount, *redrawPointers.firstPlayerToPlay);
 }
 
 /// @brief Renders everything on the screen, SDL_RenderPresent() is ran at the end
@@ -119,12 +232,17 @@ void renderScreen(int board[][WIDTH], BLOCK *firstBlocks, int firstBlocksAmount,
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     // Apply all changes
-    renderBoard(board, BOARD_X, BOARD_Y);
-    renderBlocks(firstBlocks, firstBlocksAmount, BLOCKS_X, BLOCKS_Y);
-    renderBlocks(secondBlocks, secondBlocksAmount, SCREEN_WIDTH - BLOCKS_WIDTH - BLOCKS_X, BLOCKS_Y);
+    renderBoard(board);
+    int index = -1;
+    if (redrawPointers.blockIndex != NULL)
+    {
+        index = *redrawPointers.blockIndex;
+    }
+    renderBlocksSelection(firstBlocks, firstBlocksAmount, firstPlayerToPlay ? index : -1, true);
+    renderBlocksSelection(secondBlocks, secondBlocksAmount, firstPlayerToPlay ? -1 : index, false);
     char playerText[19];
     sprintf(playerText, "Player %d to play!", !firstPlayerToPlay + 1);
-    renderText(playerText, foregroundColor, -1, 950, 32);
+    renderText(playerText, foregroundColor, -1, SCREEN_HEIGHT - 100, 32);
     // Set render target to screen
     if (SDL_SetRenderTarget(renderer, NULL) < 0)
     {
@@ -133,7 +251,7 @@ void renderScreen(int board[][WIDTH], BLOCK *firstBlocks, int firstBlocksAmount,
     }
     // Render copy from texture to screen
     SDL_RenderCopy(renderer, mainTexture, NULL, NULL);
-    
+
     // Render present
     SDL_RenderPresent(renderer);
 }
@@ -196,23 +314,26 @@ int renderText(const char *text, SDL_Color color, int x, int y, int fontSize)
     return 0;
 }
 
-static void renderCell(SDL_Color color, const int x, const int y)
+static void renderCell(SDL_Color color, const int x, const int y, int blockSize)
 {
     SDL_Rect borderRect, insideRect;
     borderRect.x = x;
     borderRect.y = y;
-    borderRect.w = BLOCK_SIZE;
-    borderRect.h = BLOCK_SIZE;
-    insideRect.x = borderRect.x + BLOCK_BORDER_SIZE;
-    insideRect.y = borderRect.y + BLOCK_BORDER_SIZE;
-    insideRect.w = BLOCK_SIZE - BLOCK_BORDER_SIZE * 2;
-    insideRect.h = BLOCK_SIZE - BLOCK_BORDER_SIZE * 2;
+    borderRect.w = blockSize;
+    borderRect.h = blockSize;
+    insideRect.x = borderRect.x + blockSize / 5;
+    insideRect.y = borderRect.y + blockSize / 5;
+    insideRect.w = blockSize - blockSize / 5 * 2;
+    insideRect.h = blockSize - blockSize / 5 * 2;
     Uint8 r = color.r;
     Uint8 g = color.g;
     Uint8 b = color.b;
-    if (r - 20 >= 0) r -= 20;
-    if (g - 20 >= 0) g -= 20;
-    if (b - 20 >= 0) b -= 20;
+    if (r - 20 >= 0)
+        r -= 20;
+    if (g - 20 >= 0)
+        g -= 20;
+    if (b - 20 >= 0)
+        b -= 20;
     SDL_SetRenderDrawColor(renderer, r, g, b, color.a);
     SDL_RenderFillRect(renderer, &borderRect);
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
@@ -227,25 +348,27 @@ static void renderBlock(BLOCK block, SDL_Color color, const int x, const int y)
         {
             if (block.block[blockY][blockX])
             {
-                renderCell(color, x + blockX * BLOCK_SIZE, y + blockY * BLOCK_SIZE);
+                renderCell(color, x + blockX * BLOCK_SIZE, y + blockY * BLOCK_SIZE, BLOCK_SIZE);
             }
         }
     }
 }
 
-void renderBoard(int board[][WIDTH], int x, int y)
+void renderBoard(int board[][WIDTH])
 {
+    int x = BOARD_X;
+    int y = BOARD_Y;
     SDL_Rect borderRect, insideRect;
     borderRect.x = x;
     borderRect.y = y;
-    borderRect.w = 2 * BORDER_SIZE + WIDTH * BLOCK_SIZE;
-    borderRect.h = 2 * BORDER_SIZE + HEIGHT * BLOCK_SIZE;
+    borderRect.w = 2 * BORDER_SIZE + WIDTH * BOARD_BLOCK_SIZE;
+    borderRect.h = 2 * BORDER_SIZE + HEIGHT * BOARD_BLOCK_SIZE;
     x += BORDER_SIZE;
     y += BORDER_SIZE;
     insideRect.x = x;
     insideRect.y = y;
-    insideRect.w = WIDTH * BLOCK_SIZE;
-    insideRect.h = HEIGHT * BLOCK_SIZE;
+    insideRect.w = WIDTH * BOARD_BLOCK_SIZE;
+    insideRect.h = HEIGHT * BOARD_BLOCK_SIZE;
     Uint8 r = 12;
     Uint8 g = 7;
     Uint8 b = 18;
@@ -259,14 +382,17 @@ void renderBoard(int board[][WIDTH], int x, int y)
         {
             if (board[boardY][boardX] != OFF_VALUE)
             {
-                renderCell(COLORS[board[boardY][boardX] - 30], x + boardX * BLOCK_SIZE, y + boardY * BLOCK_SIZE);
+                renderCell(COLORS[board[boardY][boardX] - 30], x + boardX * BOARD_BLOCK_SIZE, y + boardY * BOARD_BLOCK_SIZE, BOARD_BLOCK_SIZE);
             }
         }
     }
 }
 
-void renderBlocksSelection(BLOCK* blocks, int blocksAmount, int blockIndex, int x, int y)
+// TODO: Allow for more blocks in hand, hide some while keeping selected in middle of selection, still visible
+void renderBlocksSelection(BLOCK *blocks, int blocksAmount, int blockIndex, bool firstPlayerToPlay)
 {
+    int x = firstPlayerToPlay ? BLOCKS_X : SCREEN_WIDTH - BLOCKS_WIDTH - BLOCKS_X;
+    int y = BLOCKS_Y;
     // These rectangles also clear the area
     SDL_Rect borderRect, insideRect;
     borderRect.x = x;
@@ -297,21 +423,20 @@ void renderBlocksSelection(BLOCK* blocks, int blocksAmount, int blockIndex, int 
     {
         int offsetX = (BLOCKS_WIDTH - BLOCK_SIZE * blocks[i].width) / 2;
         SDL_Color blockColor = COLORS[blocks[i].color - 30];
-        if (i != blockIndex)
+        if (blockIndex == -1 || i != blockIndex)
         {
             int gray = blockColor.r + blockColor.g + blockColor.b;
             gray /= 3;
             blockColor.r = gray;
             blockColor.g = gray;
             blockColor.b = gray;
-            blockColor.a /= 2;
         }
         renderBlock(blocks[i], blockColor, x + offsetX, y + offsetY);
         offsetY += verticalSpacing + blocks[i].height * BLOCK_SIZE;
     }
 }
 
-void renderBlocks(BLOCK* blocks, int blocksAmount, int x, int y)
+void renderBlocks(BLOCK *blocks, int blocksAmount, bool firstPlayerToPlay)
 {
-    renderBlocksSelection(blocks, blocksAmount, -1, x, y);
+    renderBlocksSelection(blocks, blocksAmount, -1, firstPlayerToPlay);
 }

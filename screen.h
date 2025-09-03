@@ -3,39 +3,31 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 
-#define SCREEN_WIDTH 1920
-#define SCREEN_HEIGHT 1080
-
-
-#define BLOCK_SIZE 50
-#define BLOCK_BORDER_SIZE 10
-
-#define BLOCKS_WIDTH 250
-#define BLOCKS_HEIGHT 950
-#define BLOCKS_MARGIN 100
-
-#define BLOCKS_X 100
-#define BLOCKS_Y 30
-
 #define BORDER_SIZE 5
-
-#define BOARD_X ((SCREEN_WIDTH - WIDTH * BLOCK_SIZE) / 2)
-#define BOARD_Y 100
+#define BLOCKS_MARGIN 30
 
 #define FONT_NOTO_SANS "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"
 
+void calculateSizes();
 void init();
+void updateRedrawPointers(BLOCK **p1Blocks, int *p1Amount, BLOCK **p2Blocks, int *p2Amount, bool *p1Play);
+void updateRedrawBlockIndex(int *blockIndex);
 void finish();
+
+int handleEvents(SDL_Event event);
 
 void updateScreen();
 void clearScreen();
 void renderOnMainTexture();
 void renderPresentFromTexture();
+int getWindowWidth();
+int getWindowHeight();
+void redraw(int board[][WIDTH]);
 void renderScreen(int board[][WIDTH], BLOCK *firstBlocks, int firstBlocksAmount, BLOCK *secondBlocks, int secondBlocksAmount, bool firstPlayerToPlay);
 
 int renderText(const char *text, SDL_Color color, int x, int y, int fontSize);
-void renderBoard(int board[][WIDTH], int x, int y);
-void renderBlocksSelection(BLOCK* blocks, int blocksAmount, int blockIndex, int x, int y);
-void renderBlocks(BLOCK* blocks, int blocksAmount, int x, int y);
+void renderBoard(int board[][WIDTH]);
+void renderBlocksSelection(BLOCK *blocks, int blocksAmount, int blockIndex, bool firstPlayerToPlay);
+void renderBlocks(BLOCK *blocks, int blocksAmount, bool firstPlayerToPlay);
 
 #endif

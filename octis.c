@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <string.h>
+#include <math.h>
 #include <time.h>
 #include <SDL2/SDL.h>
 
@@ -13,6 +13,8 @@ SDL_Color pureWhite = {255, 255, 255, 255};
 SDL_Event event;
 int keypressed;
 int buttonpressed;
+
+int turns;
 
 const BLOCK BLOCKS[] = {
     {{{1}},
@@ -185,6 +187,7 @@ int main(int argc, char **argv)
 
 void startGame()
 {
+    turns = 0;
     bool firstPlayerToPlay = false;
     BLOCK *firstPlayerBlocks = (BLOCK *)malloc(sizeof(BLOCK) * MAX_BLOCK_COUNT);
     if (firstPlayerBlocks == NULL)
@@ -304,6 +307,7 @@ void pickBlocks(BLOCK *blocks, int blockCount)
 /// @return NULL if the player lost, a list of the still available blocks otherwise
 BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool firstPlayerToPlay)
 {
+    turns++;
     // Get the chosen block from the player
     int blockIndex = 0;
     updateRedrawBlockIndex(&blockIndex);
@@ -394,7 +398,7 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
     bool firstPlace = true;
     int maxHeight = HEIGHT - block.height;
 
-    int lastIncrement = (int)time(NULL);
+    Uint32 lastIncrement = SDL_GetTicks() + 1000 - (log(2 * turns) * 200);
 
     int boardCopy[HEIGHT][WIDTH];
     bool needsRender = true;
@@ -551,16 +555,16 @@ BLOCK *turn(int board[][WIDTH], BLOCK *playerBlocks, int *blocksAmount, bool fir
                 renderPresentFromTexture();
 
                 // Reset the timer for height increments to avoid strange moves being too close together
-                lastIncrement = (int)time(NULL);
+                lastIncrement = SDL_GetTicks() + 1000 - (log(2 * turns) * 200);
             }
             expectedSquares -= addedSquares;
         }
 
         // Increment height periodically
-        if ((int)time(NULL) - lastIncrement >= 1)
+        if (SDL_TICKS_PASSED(SDL_GetTicks(), lastIncrement))
         {
             height++;
-            lastIncrement = (int)time(NULL);
+            lastIncrement = SDL_GetTicks() + 1000 - (log(2 * turns) * 200);
             needsRender = true;
         }
     } while (height <= maxHeight && !fallEnded);
